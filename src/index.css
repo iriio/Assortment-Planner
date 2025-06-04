@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Modern SaaS scrollbar - slightly more subtle */
+::-webkit-scrollbar {
+  width: 6px; /* Slightly wider for easier interaction */
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  overflow: hidden;
+  color: #334155; /* slate-700 for base text */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* For product line category cards image grid */
+.product-image-grid img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+.progress-bar-fill {
+  transition: width 0.3s ease-in-out;
+}
+.horizontal-scroll-container {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+}
+/* Softer focus rings for all focusable elements */
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+[tabindex="0"]:focus,
+a:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgb(14 165 233 / 50%);
+}
+/* Specific for select elements to ensure default browser outline is removed when custom focus is applied */
+select:focus {
+  outline: none; /* Remove default outline first */
+}
+
+/* SVG Gauge specific styles - example for needle */
+.gauge-needle {
+  transition: transform 0.5s ease-in-out;
+  transform-origin: center bottom; /* Or specific coordinates if needed */
+}
