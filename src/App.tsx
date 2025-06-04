@@ -16,6 +16,8 @@ import {
 } from "./types";
 import { updateStyleFinancials, generateId } from "./services/planningService";
 
+// Cache-busting comment
+
 const App: React.FC = () => {
   const [linePlans, setLinePlans] = useState<LinePlan[]>([initialLinePlan]);
   const [currentLinePlanId, setCurrentLinePlanId] = useState<string>(
