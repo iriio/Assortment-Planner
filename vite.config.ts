@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig(({ command }) => ({
-  base: command === "serve" ? "/" : "/assortment-planner/",
+  base: command === "serve" ? "/" : "/Assortment-Planner/",
   plugins: [react()],
   resolve: {
     alias: {

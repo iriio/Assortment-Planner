@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist --branch gh-pages --repo https://github.com/iriio/assortment-planner.git --message 'deploy'"
+    "deploy": "gh-pages -d dist --branch gh-pages --repo https://github.com/iriio/Assortment-Planner.git --message 'deploy'"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
