@@ -457,7 +457,6 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
         <div className="flex-grow p-5">
           <CategoryDetailView
             category={selectedCategory}
-            onBack={handleBackToOverview}
             onUpdateStyle={handleUpdateStyle}
             onAddStyle={handleAddStyle}
             currentLayout={layout}
@@ -479,7 +478,6 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
         <div className="flex-grow p-5">
           <CategoryDetailView
             category={selectedCategory}
-            onBack={handleBackToOverview}
             onUpdateStyle={handleUpdateStyle}
             onAddStyle={handleAddStyle}
             currentLayout={layout}

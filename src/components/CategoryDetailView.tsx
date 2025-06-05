@@ -1,25 +1,21 @@
 import React, { useState } from "react";
+import { CollectionIcon } from "./icons";
 import { LinePlanCategory, PlannedStyle, PlannedStyleStatus } from "../types";
-import {
-  ChevronLeftIcon,
-  CollectionIcon,
-  PencilIcon,
-} from "../components/icons";
 import StyleModal from "./StyleModal";
 import ComponentModal from "./ComponentModal";
 import ProductDetailView from "./ProductDetailView";
 
+type LayoutViewOption = "standard" | "compactList" | "wideView";
+
 interface CategoryDetailViewProps {
   category: LinePlanCategory;
-  onBack: () => void;
-  onUpdateStyle: (categoryId: string, updatedStyle: PlannedStyle) => void;
-  onAddStyle: (categoryId: string, newStyle: PlannedStyle) => void;
-  currentLayout: string;
+  onUpdateStyle: (categoryId: string, style: PlannedStyle) => void;
+  onAddStyle: (categoryId: string, style: PlannedStyle) => void;
+  currentLayout: LayoutViewOption;
 }
 
 const CategoryDetailView: React.FC<CategoryDetailViewProps> = ({
   category,
-  onBack,
   onUpdateStyle,
   onAddStyle,
   currentLayout,
@@ -91,7 +87,7 @@ const CategoryDetailView: React.FC<CategoryDetailViewProps> = ({
 
   const renderStandardView = () => (
     <div className="grid grid-cols-3 gap-1 items-start auto-rows-auto">
-      {category.plannedStyles.map((style) => (
+      {category.plannedStyles.map((style: PlannedStyle) => (
         <div
           key={style.id}
           className="bg-white rounded-xl border-2 border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer aspect-square flex flex-col overflow-hidden"
@@ -157,7 +153,20 @@ const CategoryDetailView: React.FC<CategoryDetailViewProps> = ({
                     className="text-sky-600 hover:text-sky-700 p-1.5 rounded-md hover:bg-sky-100/70 transition-colors active:bg-sky-200/70"
                     title="Edit Style Details"
                   >
-                    <PencilIcon className="w-3 h-3" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-3 h-3"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                      />
+                    </svg>
                   </button>
                   <button
                     onClick={() => openComponentModal(style)}
@@ -190,7 +199,7 @@ const CategoryDetailView: React.FC<CategoryDetailViewProps> = ({
 
   const renderCompactListView = () => (
     <div className="space-y-3.5 p-5">
-      {category.plannedStyles.map((style) => (
+      {category.plannedStyles.map((style: PlannedStyle) => (
         <div
           key={style.id}
           className="flex items-center justify-between bg-white px-4 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors"
@@ -231,7 +240,20 @@ const CategoryDetailView: React.FC<CategoryDetailViewProps> = ({
                 className="text-sky-600 hover:text-sky-700 p-1.5 rounded-md hover:bg-sky-100/70"
                 title="Edit Style Details"
               >
-                <PencilIcon className="w-4 h-4" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                  />
+                </svg>
               </button>
               <button
                 onClick={() => openComponentModal(style)}
@@ -289,7 +311,7 @@ const CategoryDetailView: React.FC<CategoryDetailViewProps> = ({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-slate-200">
-          {category.plannedStyles.map((style) => (
+          {category.plannedStyles.map((style: PlannedStyle) => (
             <tr
               key={style.id}
               className="hover:bg-slate-50 transition-colors cursor-pointer"
@@ -350,7 +372,20 @@ const CategoryDetailView: React.FC<CategoryDetailViewProps> = ({
                   className="text-sky-600 hover:text-sky-700 p-1.5 rounded-md hover:bg-sky-100/70"
                   title="Edit Style Details"
                 >
-                  <PencilIcon className="w-4 h-4" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                    />
+                  </svg>
                 </button>
                 <button
                   onClick={() => openComponentModal(style)}
