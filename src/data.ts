@@ -184,7 +184,7 @@ export const productCatalogueData: ProductCatalogueItem[] = [
     margin: calculateStyleMargin(55.6, 139),
     imageUrl: "/images/WRAP-FRONT_T-SHIRT_DRESS_$139.jpeg",
     components: defaultDressComponents,
-    tags: ["tag-casual", "tag-everyday", "tag-bestseller", "tag-spring"],
+    tags: ["tag-everyday", "tag-bestseller", "tag-spring"],
   },
   {
     id: generateId(),

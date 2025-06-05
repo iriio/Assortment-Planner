@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { LinePlan } from "../types";
 
@@ -29,14 +29,48 @@ const EditProgramTargetsModal: React.FC<EditProgramTargetsModalProps> = ({
     currentLinePlan.targetOverallRevenue / 1000000
   );
 
+  // Reset form state when modal opens or currentLinePlan changes
+  useEffect(() => {
+    if (isOpen) {
+      setTargetMargin(currentLinePlan.targetOverallMargin * 100);
+      setTargetSellThrough(currentLinePlan.targetOverallSellThrough * 100);
+      setTargetRevenue(currentLinePlan.targetOverallRevenue / 1000000);
+    }
+  }, [isOpen, currentLinePlan]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate inputs
+    if (
+      isNaN(targetMargin) ||
+      isNaN(targetSellThrough) ||
+      isNaN(targetRevenue)
+    ) {
+      return;
+    }
+
     onUpdateTargets(
       targetMargin / 100,
       targetSellThrough / 100,
       targetRevenue * 1000000
     );
     onClose();
+  };
+
+  const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+    setTargetMargin(isNaN(value) ? 0 : value);
+  };
+
+  const handleSellThroughChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+    setTargetSellThrough(isNaN(value) ? 0 : value);
+  };
+
+  const handleRevenueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+    setTargetRevenue(isNaN(value) ? 0 : value);
   };
 
   return (
@@ -63,7 +97,7 @@ const EditProgramTargetsModal: React.FC<EditProgramTargetsModalProps> = ({
               max="100"
               step="0.1"
               value={targetMargin}
-              onChange={(e) => setTargetMargin(parseFloat(e.target.value))}
+              onChange={handleMarginChange}
               className="block w-full p-2.5 border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
             />
           </div>
@@ -85,7 +119,7 @@ const EditProgramTargetsModal: React.FC<EditProgramTargetsModalProps> = ({
               max="100"
               step="0.1"
               value={targetSellThrough}
-              onChange={(e) => setTargetSellThrough(parseFloat(e.target.value))}
+              onChange={handleSellThroughChange}
               className="block w-full p-2.5 border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
             />
           </div>
@@ -109,7 +143,7 @@ const EditProgramTargetsModal: React.FC<EditProgramTargetsModalProps> = ({
               min="0"
               step="0.1"
               value={targetRevenue}
-              onChange={(e) => setTargetRevenue(parseFloat(e.target.value))}
+              onChange={handleRevenueChange}
               className="block w-full pl-7 p-2.5 border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">

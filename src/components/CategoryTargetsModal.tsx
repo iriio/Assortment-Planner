@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { LinePlanCategory } from "../types";
 
@@ -32,6 +32,25 @@ const CategoryTargetsModal: React.FC<CategoryTargetsModalProps> = ({
       ? initialValues.targetMetrics.sellThrough * 100
       : 85
   );
+
+  // Reset form state when modal opens or initialValues change
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialValues.name || "");
+      setTargetVolume(initialValues.targetVolume || "");
+      setTargetMargin(
+        initialValues.targetMetrics?.margin
+          ? initialValues.targetMetrics.margin * 100
+          : 60
+      );
+      setTargetRevenue(initialValues.targetMetrics?.revenue || "");
+      setTargetSellThrough(
+        initialValues.targetMetrics?.sellThrough
+          ? initialValues.targetMetrics.sellThrough * 100
+          : 85
+      );
+    }
+  }, [isOpen, initialValues]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -10,6 +10,7 @@ import {
 import { productCatalogueData as allCatalogueItems } from "../data";
 import {
   ChevronRightIcon,
+  ChevronLeftIcon,
   CurrencyDollarIcon,
   ScaleIcon,
   PercentIcon,
@@ -130,6 +131,8 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
     status: [],
   });
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   const handleFiltersChange = (newFilters: FilterState) => {
     setFilters(newFilters);
   };
@@ -245,7 +248,7 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
       case "standard":
         return {
           containerClasses:
-            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-5",
+            "grid grid-cols-3 gap-1 p-5 items-start auto-rows-auto",
           cardDisplayMode: "grid",
         };
       case "compactList":
@@ -257,7 +260,7 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
       default:
         return {
           containerClasses:
-            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-5",
+            "grid grid-cols-3 gap-1 p-5 items-start auto-rows-auto",
           cardDisplayMode: "grid",
         };
     }
@@ -267,6 +270,60 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
     layout: LayoutViewOption = "standard"
   ) => {
     const isCompact = layout === "compactList";
+
+    // Calculate metrics with debug logging
+    const sellInProjected = currentLinePlan.categories.reduce((sum, cat) => {
+      const stylesCount = cat.plannedStyles.length || 1;
+      const volumePerStyle = cat.targetVolume / stylesCount;
+      return (
+        sum +
+        cat.plannedStyles.reduce(
+          (styleSum, style) =>
+            styleSum + (style.projectedSellIn || volumePerStyle),
+          0
+        )
+      );
+    }, 0);
+
+    const sellInTarget = currentLinePlan.categories.reduce(
+      (sum, cat) => sum + cat.targetVolume,
+      0
+    );
+
+    const sellThroughProjected = (() => {
+      let totalProjectedSellThrough = 0;
+      let totalStyles = 0;
+
+      currentLinePlan.categories.forEach((cat) => {
+        cat.plannedStyles.forEach((style) => {
+          totalProjectedSellThrough +=
+            (style.projectedSellThrough || 0.8) * 100;
+          totalStyles++;
+        });
+      });
+
+      return totalStyles > 0 ? totalProjectedSellThrough / totalStyles : 0;
+    })();
+
+    // Debug logging
+    console.log("Metrics Debug:", {
+      revenue: {
+        projected: overallProjectedRevenue,
+        target: currentLinePlan.targetOverallRevenue / 1000000,
+      },
+      margin: {
+        projected: overallAchievedMargin * 100,
+        target: currentLinePlan.targetOverallMargin * 100,
+      },
+      sellIn: {
+        projected: sellInProjected,
+        target: sellInTarget,
+      },
+      sellThrough: {
+        projected: sellThroughProjected,
+        target: currentLinePlan.targetOverallSellThrough * 100,
+      },
+    });
 
     const metrics = (
       <div className="space-y-4">
@@ -311,19 +368,8 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
         />
         <MetricDisplayCard
           title="Sell-In"
-          projectedValue={currentLinePlan.categories.reduce(
-            (sum, cat) =>
-              sum +
-              cat.plannedStyles.reduce(
-                (styleSum, style) => styleSum + (style.projectedSellIn || 0),
-                0
-              ),
-            0
-          )}
-          targetValue={currentLinePlan.categories.reduce(
-            (sum, cat) => sum + cat.targetVolume,
-            0
-          )}
+          projectedValue={sellInProjected}
+          targetValue={sellInTarget}
           unit="K"
           displayValueFormatter={(val) => `${(val / 1000).toFixed(1)}K`}
           icon={<ScaleIcon />}
@@ -335,21 +381,7 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
         />
         <MetricDisplayCard
           title="Sell-Through"
-          projectedValue={
-            (currentLinePlan.categories.reduce(
-              (sum, cat) =>
-                sum +
-                cat.plannedStyles.reduce(
-                  (styleSum, style) =>
-                    styleSum + (style.projectedSellThrough || 0),
-                  0
-                ) /
-                  (cat.plannedStyles.length || 1),
-              0
-            ) /
-              (currentLinePlan.categories.length || 1)) *
-            100
-          }
+          projectedValue={sellThroughProjected}
           targetValue={currentLinePlan.targetOverallSellThrough * 100}
           unit="%"
           displayValueFormatter={(val) => `${val.toFixed(1)}%`}
@@ -457,7 +489,7 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
     }
 
     return (
-      <div className={`${containerClasses} flex-grow`}>
+      <div className={`${containerClasses} items-start auto-rows-min gap-5`}>
         {sortedCategories.map((category) => (
           <ProductLineCategoryCard
             key={category.id}
@@ -560,57 +592,255 @@ const ProgramOverviewPage: React.FC<ProgramOverviewPageProps> = ({
 
   return (
     <div className="flex flex-1 h-full bg-slate-100">
-      <aside className="w-64 bg-white border-r border-slate-200/80 p-4 space-y-4 flex-shrink-0 h-full overflow-y-auto styled-scrollbar shadow-sm">
-        <button
-          onClick={() => setIsCreateProgramModalOpen(true)}
-          className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2.5 px-3.5 rounded-lg text-sm shadow-md hover:shadow-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-1 active:bg-sky-700 active:scale-[0.98]"
-          title="Create a new program"
-        >
-          Create New Program
-        </button>
-        <div className="pt-2">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">
-            Programs
-          </h3>
-          {linePlans.map((lp) => (
-            <div
-              key={lp.id}
-              onClick={() => setCurrentLinePlanId(lp.id)}
-              className={`p-2.5 rounded-lg cursor-pointer text-sm group transition-all duration-150 ease-in-out relative mb-1.5
-                    ${
-                      lp.id === currentLinePlan.id
-                        ? "bg-sky-100/70 text-sky-700 border-l-4 border-sky-500 font-semibold shadow-inner"
-                        : "hover:bg-slate-100 text-slate-600 hover:text-slate-800 active:bg-slate-200/70"
-                    }`}
-              title={`View program ${lp.name}`}
-            >
-              <div className="flex justify-between items-center">
-                <span>{lp.name}</span>
-                {lp.id !== currentLinePlan.id && (
-                  <ChevronRightIcon className="w-4 h-4 text-slate-400 group-hover:text-slate-500 transition-colors" />
-                )}
-              </div>
-              <p
-                className={`text-xs mt-0.5 ${
-                  lp.id === currentLinePlan.id
-                    ? "text-sky-600"
-                    : "text-slate-500 group-hover:text-slate-600"
+      {/* Professional Sidebar - Brainwave Style */}
+      <aside
+        className={`transition-all duration-300 ease-out bg-white border-r border-slate-200 flex-shrink-0 h-full shadow-sm relative ${
+          sidebarCollapsed ? "w-16" : "w-72"
+        }`}
+        style={{ overflow: "hidden" }}
+      >
+        {/* Sidebar Content */}
+        <div className="h-full flex flex-col">
+          {/* Header Section with integrated toggle */}
+          <div
+            className={`border-b border-slate-200 transition-all duration-300 ease-out ${
+              sidebarCollapsed ? "px-3 py-4" : "px-6 py-5"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div
+                className={`transition-all duration-300 ease-out ${
+                  sidebarCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
                 }`}
               >
-                {lp.season}
-              </p>
+                {!sidebarCollapsed && (
+                  <h2 className="text-lg font-semibold text-slate-800 whitespace-nowrap">
+                    Line Planner
+                  </h2>
+                )}
+              </div>
+              {/* Integrated Toggle Button - Brainwave Style */}
+              <button
+                onClick={() => setSidebarCollapsed((c) => !c)}
+                className={`p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all duration-200 flex-shrink-0 ${
+                  sidebarCollapsed ? "mx-auto" : ""
+                }`}
+                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <ChevronLeftIcon
+                  className={`w-4 h-4 transition-transform duration-300 ease-out ${
+                    sidebarCollapsed ? "rotate-180" : "rotate-0"
+                  }`}
+                />
+              </button>
             </div>
-          ))}
+
+            <div
+              className={`transition-all duration-300 ease-out ${
+                sidebarCollapsed ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              {!sidebarCollapsed ? (
+                <button
+                  onClick={() => setIsCreateProgramModalOpen(true)}
+                  className="w-full bg-sky-500 hover:bg-sky-600 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2"
+                  title="Create a new program"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <PlusIcon className="w-4 h-4" />
+                    <span>New Program</span>
+                  </div>
+                </button>
+              ) : null}
+            </div>
+
+            {sidebarCollapsed && (
+              <div
+                className={`flex justify-center transition-all duration-300 ease-out ${
+                  sidebarCollapsed ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <button
+                  onClick={() => setIsCreateProgramModalOpen(true)}
+                  className="w-10 h-10 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors duration-200 flex items-center justify-center relative group"
+                  title="Create a new program"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  {/* Tooltip */}
+                  <div className="absolute left-full ml-3 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                    New Program
+                    <div className="absolute top-1/2 -left-1 w-2 h-2 bg-slate-900 rotate-45 -translate-y-1/2"></div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Programs Section */}
+          <div className="flex-1 overflow-hidden">
+            {/* Section Header */}
+            <div
+              className={`transition-all duration-300 ease-out ${
+                sidebarCollapsed ? "opacity-0 max-h-0" : "opacity-100 max-h-20"
+              }`}
+            >
+              {!sidebarCollapsed && (
+                <div className="px-6 py-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+                      Programs
+                    </h3>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md flex-shrink-0">
+                      {linePlans.length}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Program List */}
+            <div
+              className={`transition-all duration-300 ease-out overflow-y-auto ${
+                sidebarCollapsed ? "px-3 py-4" : "px-4 py-4"
+              }`}
+              style={{
+                height: sidebarCollapsed
+                  ? "calc(100% - 0px)"
+                  : "calc(100% - 80px)",
+              }}
+            >
+              <div
+                className={`space-y-1 ${
+                  sidebarCollapsed ? "flex flex-col items-center" : ""
+                }`}
+              >
+                {linePlans.map((lp) => (
+                  <div
+                    key={lp.id}
+                    onClick={() => setCurrentLinePlanId(lp.id)}
+                    className={`relative cursor-pointer group transition-colors duration-200 ${
+                      sidebarCollapsed
+                        ? "w-10 h-10 rounded-lg flex items-center justify-center"
+                        : "w-full px-3 py-2.5 rounded-lg"
+                    } ${
+                      lp.id === currentLinePlan.id
+                        ? sidebarCollapsed
+                          ? "bg-sky-500 text-white"
+                          : "bg-sky-50 text-sky-700 border-l-3 border-sky-500"
+                        : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {sidebarCollapsed ? (
+                      <div className="relative flex items-center justify-center">
+                        <CollectionIcon className="w-5 h-5" />
+                        {/* Professional Tooltip */}
+                        <div className="absolute left-full ml-3 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                          <div className="font-medium">{lp.name}</div>
+                          <div className="text-slate-300 text-xs">
+                            {lp.season}
+                          </div>
+                          <div className="absolute top-1/2 -left-1 w-2 h-2 bg-slate-900 rotate-45 -translate-y-1/2"></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className={`flex items-center justify-between w-full transition-all duration-300 ease-out ${
+                          sidebarCollapsed ? "opacity-0" : "opacity-100"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                          <CollectionIcon className="w-5 h-5 flex-shrink-0" />
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="font-medium truncate text-sm">
+                              {lp.name}
+                            </span>
+                            <span className="text-xs text-slate-500 truncate">
+                              {lp.season}
+                            </span>
+                          </div>
+                        </div>
+                        {lp.id === currentLinePlan.id ? (
+                          <div className="w-2 h-2 bg-sky-500 rounded-full flex-shrink-0"></div>
+                        ) : (
+                          <ChevronRightIcon className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors flex-shrink-0" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Empty state */}
+              {linePlans.length === 0 && (
+                <div
+                  className={`text-center py-8 transition-all duration-300 ease-out ${
+                    sidebarCollapsed ? "px-2" : "px-4"
+                  }`}
+                >
+                  {!sidebarCollapsed ? (
+                    <div
+                      className={`transition-all duration-300 ease-out ${
+                        sidebarCollapsed ? "opacity-0" : "opacity-100"
+                      }`}
+                    >
+                      <CollectionIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500">No programs yet</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Create your first program
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                      <CollectionIcon className="w-4 h-4 text-slate-400" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
         <div className="px-5 py-3.5 bg-white border-b border-slate-200/80 flex items-center justify-between flex-shrink-0 shadow-sm">
-          <div className="flex items-center space-x-4">
-            <h3 className="text-lg font-semibold text-slate-800">
-              {currentLinePlan.name} Product Lines
-            </h3>
-            <div className="relative"></div>
+          <div className="flex items-center space-x-4 min-w-0 flex-1">
+            <nav className="flex items-center min-w-0 max-w-full">
+              {viewMode === "category" && selectedCategoryId ? (
+                <>
+                  <button
+                    onClick={handleBackToOverview}
+                    className="text-lg font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 px-2 py-1 rounded-md transition-colors duration-150 truncate"
+                    title={currentLinePlan.name}
+                  >
+                    {currentLinePlan.name}
+                  </button>
+                  <ChevronRightIcon className="w-5 h-5 text-slate-400 mx-1 flex-shrink-0" />
+                  <span className="text-lg font-semibold text-slate-800 truncate">
+                    {currentLinePlan.categories.find(
+                      (cat) => cat.id === selectedCategoryId
+                    )?.name || "Category"}
+                  </span>
+                </>
+              ) : viewMode === "composition" ? (
+                <>
+                  <button
+                    onClick={handleBackFromComposition}
+                    className="text-lg font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 px-2 py-1 rounded-md transition-colors duration-150 truncate"
+                    title={currentLinePlan.name}
+                  >
+                    {currentLinePlan.name}
+                  </button>
+                  <ChevronRightIcon className="w-5 h-5 text-slate-400 mx-1 flex-shrink-0" />
+                  <span className="text-lg font-semibold text-slate-800 truncate">
+                    Composition
+                  </span>
+                </>
+              ) : (
+                <span className="text-lg font-semibold text-slate-800 px-2 py-1 truncate">
+                  {currentLinePlan.name}
+                </span>
+              )}
+            </nav>
           </div>
           <div className="flex items-center space-x-2">
             <button

@@ -78,7 +78,38 @@ const MetricDisplayCard: React.FC<MetricDisplayCardProps> = ({
         ? 100
         : 0
       : Math.min(Math.max((projectedValue / targetValue) * 100, 0), 100);
-  const fillClass = `bg-${baseColorName}-500`;
+
+  // Get static color classes based on baseColorName
+  const getStaticColorClasses = (colorName: string) => {
+    switch (colorName) {
+      case "green":
+        return {
+          fillClass: "bg-green-600",
+          lightFillClass: "bg-green-200",
+          bgClass: "bg-green-100",
+        };
+      case "red":
+        return {
+          fillClass: "bg-red-600",
+          lightFillClass: "bg-red-200",
+          bgClass: "bg-red-100",
+        };
+      case "sky":
+        return {
+          fillClass: "bg-sky-600",
+          lightFillClass: "bg-sky-200",
+          bgClass: "bg-sky-100",
+        };
+      default:
+        return {
+          fillClass: "bg-slate-600",
+          lightFillClass: "bg-slate-200",
+          bgClass: "bg-slate-100",
+        };
+    }
+  };
+
+  const colorClasses = getStaticColorClasses(baseColorName);
 
   if (viewStyle === "gauge") {
     const angle = Math.min(
@@ -131,7 +162,7 @@ const MetricDisplayCard: React.FC<MetricDisplayCardProps> = ({
               } ${40 - 40 * (1 - Math.cos((Math.PI * angle) / 180))}`}
               strokeWidth="6"
               stroke="currentColor"
-              className={`text-${baseColorName}-500`}
+              className={colorClasses.fillClass.replace("bg-", "text-")}
               fill="none"
               style={{ strokeDasharray: `${(angle / 180) * 125.6} 125.6` }}
             />
@@ -151,7 +182,9 @@ const MetricDisplayCard: React.FC<MetricDisplayCardProps> = ({
               y2={40 - 30 * Math.sin((Math.PI * angle) / 180)}
               strokeWidth="2"
               stroke="currentColor"
-              className={`text-${baseColorName}-600`}
+              className={colorClasses.fillClass
+                .replace("bg-", "text-")
+                .replace("-600", "-700")}
             />
           </svg>
         </div>
@@ -176,71 +209,100 @@ const MetricDisplayCard: React.FC<MetricDisplayCardProps> = ({
   }
 
   if (viewStyle === "bullet") {
+    // Calculate range for bullet chart - make it more generous to show ranges properly
     let maxRangeValue;
     if (targetValue === 0 && projectedValue === 0) {
       maxRangeValue = 100;
     } else if (targetValue === 0) {
       maxRangeValue = Math.abs(projectedValue) * 1.5;
     } else {
+      // Make range more generous to show performance zones
       maxRangeValue = Math.max(
-        Math.abs(targetValue) * 1.25,
-        Math.abs(projectedValue) * 1.1,
-        Math.abs(targetValue) + Math.abs(delta) * 1.1
+        Math.abs(targetValue) * 1.5,
+        Math.abs(projectedValue) * 1.2,
+        Math.abs(targetValue) + Math.abs(delta) * 1.2
       );
     }
     if (maxRangeValue <= 0) maxRangeValue = 1;
 
+    // Define performance ranges with more subtle colors
     const ranges =
       targetValue !== 0
         ? [
             {
-              threshold: targetValue * (higherIsBetter ? 0.6 : 1.4),
-              color: "bg-red-100",
+              threshold: Math.abs(targetValue) * (higherIsBetter ? 0.7 : 1.3),
+              color: "bg-slate-100",
               label: "Poor",
             },
             {
-              threshold: targetValue * (higherIsBetter ? 0.9 : 1.1),
-              color: "bg-amber-100",
+              threshold: Math.abs(targetValue) * (higherIsBetter ? 0.95 : 1.05),
+              color: "bg-slate-50",
               label: "Fair",
             },
-            { threshold: maxRangeValue, color: "bg-green-100", label: "Good" },
+            {
+              threshold: maxRangeValue,
+              color: "bg-white",
+              label: "Good",
+            },
           ]
         : [{ threshold: maxRangeValue, color: "bg-slate-100", label: "Range" }];
 
-    const featureBarHeight = isCompact ? "h-2.5" : "h-3";
-    const featureBarColor = `bg-${baseColorName}-600`;
-    const targetMarkerColor = "bg-slate-800";
+    const projectedValuePercent = Math.min(
+      100,
+      Math.max(0, (projectedValue / maxRangeValue) * 100)
+    );
+    const targetPositionPercent = Math.min(
+      98,
+      Math.max(0, (targetValue / maxRangeValue) * 100)
+    );
+
+    // Get subtle color for the projected value bar based on performance
+    const getProjectedBarColor = () => {
+      if (isEffectivelyOnTarget) {
+        return "bg-blue-500"; // On target - subtle blue
+      } else if (
+        (delta > 0 && higherIsBetter) ||
+        (delta < 0 && !higherIsBetter)
+      ) {
+        return "bg-green-500"; // Above target (good) - subtle green
+      } else {
+        return "bg-amber-500"; // Below target - subtle amber
+      }
+    };
 
     return (
       <div
-        className={`bg-white p-3 rounded-xl shadow-lg border border-slate-200 ${activeClasses} cursor-pointer transition-all duration-200 group ${
-          isCompact ? "min-w-[180px]" : "min-w-[240px]"
+        className={`bg-white rounded-lg border border-slate-200 ${activeClasses} cursor-pointer transition-all duration-200 ${
+          isCompact ? "p-3 min-w-[200px]" : "p-4 min-w-[280px]"
         }`}
         onClick={onClick}
         role="button"
         tabIndex={0}
       >
+        {/* Title with delta icon */}
         <div
-          className={`flex justify-between items-baseline mb-1 ${
-            isCompact ? "mb-0.5" : ""
+          className={`flex items-center justify-between ${
+            isCompact ? "mb-2" : "mb-3"
           }`}
         >
           <p
-            className={`font-semibold text-slate-600 ${
-              isCompact ? "text-xs" : "text-sm"
+            className={`font-semibold text-slate-700 ${
+              isCompact ? "text-sm" : "text-base"
             }`}
           >
             {title}
           </p>
-          {DeltaIconComponent && !isCompact && (
+          {DeltaIconComponent && (
             <DeltaIconComponent className={`w-4 h-4 ${deltaTextColorClass}`} />
           )}
         </div>
 
+        {/* Bullet chart */}
         <div
-          className={`relative w-full ${isCompact ? "h-2.5 my-1" : "h-3 my-2"}`}
+          className={`relative w-full ${isCompact ? "h-4 mb-3" : "h-6 mb-4"}`}
         >
-          <div className="flex h-full rounded-sm overflow-hidden">
+          {/* Background ranges */}
+          <div className="flex h-full w-full rounded-sm overflow-hidden border border-slate-200">
             {ranges.map((range, idx) => {
               const prevThreshold = idx === 0 ? 0 : ranges[idx - 1].threshold;
               let widthPercent =
@@ -256,78 +318,52 @@ const MetricDisplayCard: React.FC<MetricDisplayCardProps> = ({
                   key={idx}
                   style={{ width: `${widthPercent}%` }}
                   className={`${range.color} h-full ${
-                    idx < ranges.length - 1 ? "border-r border-white/50" : ""
+                    idx < ranges.length - 1 ? "border-r border-slate-200" : ""
                   }`}
                   title={`Range: ${range.label}`}
-                ></div>
+                />
               );
             })}
           </div>
 
+          {/* Projected value bar - color-coded but subtle */}
           <div
-            style={{
-              width: `${Math.min(
-                100,
-                Math.max(0, (Math.abs(projectedValue) / maxRangeValue) * 100)
-              )}%`,
-            }}
-            className={`absolute top-0 left-0 ${featureBarHeight} rounded-sm ${featureBarColor}`}
+            style={{ width: `${projectedValuePercent}%` }}
+            className={`absolute top-1/2 left-0 -translate-y-1/2 ${
+              isCompact ? "h-2" : "h-3"
+            } ${getProjectedBarColor()} rounded-sm`}
             title={`Projected: ${
               displayValueFormatter?.(projectedValue) ||
               `${projectedValue} ${unit}`
             }`}
-          ></div>
+          />
 
+          {/* Target marker line */}
           <div
-            style={{
-              left: `${Math.min(
-                100,
-                Math.max(0, (Math.abs(targetValue) / maxRangeValue) * 100)
-              )}%`,
-            }}
-            className={`absolute top-1/2 -translate-y-1/2 h-[calc(100%+4px)] w-1 ${targetMarkerColor} rounded-full`}
+            style={{ left: `${targetPositionPercent}%` }}
+            className={`absolute top-0 w-0.5 h-full bg-slate-900`}
             title={`Target: ${
               displayValueFormatter?.(targetValue) || `${targetValue} ${unit}`
             }`}
-          ></div>
+          />
         </div>
 
-        <div
-          className={`flex justify-between items-baseline ${
-            isCompact ? "mt-1" : "mt-1.5"
-          }`}
-        >
-          <p
-            className={`font-bold ${deltaTextColorClass} ${
-              isCompact ? "text-base" : "text-xl"
-            }`}
-          >
-            {displayValueFormatter?.(projectedValue) ||
-              `${projectedValue} ${unit}`}
-          </p>
-          <p className={`text-slate-500 ${isCompact ? "text-2xs" : "text-xs"}`}>
-            Target:{" "}
-            {displayValueFormatter?.(targetValue) || `${targetValue} ${unit}`}
-          </p>
-        </div>
-        {!isEffectivelyOnTarget && delta !== 0 && !isCompact && (
-          <div
-            className={`text-2xs font-medium ${deltaTextColorClass} flex items-center mt-0.5`}
-          >
-            {DeltaIconComponent && (
-              <DeltaIconComponent className="w-3 h-3 mr-1" />
-            )}
-            <span>
-              {delta > 0 ? "+" : ""}
-              {displayValueFormatter?.(delta) || `${delta} ${unit}`}
+        {/* Values with clear labels */}
+        <div className={`space-y-1 ${isCompact ? "text-sm" : "text-base"}`}>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-500 text-sm">Projected:</span>
+            <span className={`font-semibold ${deltaTextColorClass}`}>
+              {displayValueFormatter?.(projectedValue) ||
+                `${projectedValue} ${unit}`}
             </span>
           </div>
-        )}
-        {isEffectivelyOnTarget && !isCompact && (
-          <div className="text-2xs font-medium text-slate-500 flex items-center mt-0.5">
-            <MinusIcon className="w-3 h-3 mr-1" /> On Target
+          <div className="flex justify-between items-center">
+            <span className="text-slate-500 text-sm">Target:</span>
+            <span className="font-medium text-slate-700">
+              {displayValueFormatter?.(targetValue) || `${targetValue} ${unit}`}
+            </span>
           </div>
-        )}
+        </div>
       </div>
     );
   }
@@ -395,7 +431,7 @@ const MetricDisplayCard: React.FC<MetricDisplayCardProps> = ({
 
       <div className="w-full bg-slate-200/70 rounded-full h-1.5 mb-2.5">
         <div
-          className={`h-1.5 rounded-full progress-bar-fill ${fillClass}`}
+          className={`h-1.5 rounded-full progress-bar-fill ${colorClasses.fillClass}`}
           style={{ width: `${progressPercentage}%` }}
         ></div>
       </div>
