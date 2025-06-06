@@ -21,9 +21,36 @@ export interface StyleComponentUsage {
 }
 
 export enum PlannedStyleStatus {
-  NEW_DESIGN = "New Design",
-  PLACEHOLDER = "Placeholder",
-  CARRYOVER = "Carryover",
+  PLACEHOLDER = "placeholder",
+  ACTIVE = "active",
+}
+
+// PLM Status Stage System
+export enum PLMStatusStage {
+  DRAFT = "draft",
+  BRIEFING = "briefing",
+  PLANNING = "planning",
+  READY_FOR_REVIEW = "ready_for_review",
+  DESIGNING = "designing",
+  FINALIZING = "finalizing",
+  HANDOFF = "handoff",
+  LAUNCHED = "launched",
+}
+
+export enum UserRole {
+  MERCHANT = "merchant",
+  DESIGNER = "designer",
+  PD = "pd",
+  SYSTEM = "system",
+}
+
+export interface StatusStageDefinition {
+  id: PLMStatusStage;
+  label: string;
+  primaryOwner: UserRole;
+  description: string;
+  colorClass: string;
+  bgColorClass: string;
 }
 
 export interface ProductTag {
@@ -36,45 +63,41 @@ export interface ProductTag {
 export interface PlannedStyle {
   id: string;
   name: string;
-  status: PlannedStyleStatus;
-  sourceStyleId?: string; // For carryovers, links to ProductCatalogueItem.id
   color: string;
-  imageUrl: string | null; // Allow null for placeholder styles
-  costPrice: number; // Calculated from components
   sellingPrice: number;
-  margin: number; // Calculated: (sellingPrice - costPrice) / sellingPrice
-  components: StyleComponentUsage[];
-  notes?: string;
-  targetSellIn?: number; // Target units to buy
-  projectedSellIn?: number; // Projected units to buy
-  targetSellThrough?: number; // Target sell-through percentage
-  projectedSellThrough?: number; // Projected sell-through percentage
+  costPrice: number;
+  margin: number;
+  status: PlannedStyleStatus;
+  plmStatus: PLMStatusStage; // New PLM status field
+  imageUrl?: string;
+  projectedSellIn?: number;
+  projectedSellThrough?: number;
+  components?: StyleComponentUsage[];
   tags?: string[]; // Array of tag IDs
 }
 
 export interface LinePlanCategory {
   id: string;
   name: string;
-  targetVolume: number; // Example: units to sell
   plannedStyles: PlannedStyle[];
-  targetMargin?: number; // Target margin for this category
+  targetVolume: number;
+  plmStatus?: PLMStatusStage; // New PLM status field (optional, derived from children)
   targetMetrics?: {
-    margin: number;
-    revenue: number;
-    sellThrough: number;
+    margin?: number;
+    revenue?: number;
+    sellThrough?: number;
   };
-  // Achieved margin will be calculated on the fly or stored if needed
 }
 
 export interface LinePlan {
   id: string;
   name: string;
   season: string;
-  targetOverallMargin: number; // Percentage, e.g., 0.65 for 65%
-  targetOverallSellThrough: number; // Percentage, e.g., 0.85 for 85%
-  targetOverallRevenue: number; // Total target revenue
   categories: LinePlanCategory[];
-  trends: TrendReportItem[];
+  targetOverallMargin: number;
+  targetOverallSellThrough: number;
+  targetOverallRevenue: number;
+  plmStatus: PLMStatusStage; // Made plmStatus mandatory
 }
 
 export interface ProductCatalogueItem {
@@ -113,4 +136,23 @@ export interface Component {
   name: string;
   cost: number;
   imageUrl?: string;
+}
+
+export interface ProjectCreationInput {
+  name: string;
+  targetVolume: number;
+  targetRevenue: number;
+  targetMargin: number; // As decimal, e.g., 0.6 for 60%
+  targetSellThrough: number; // As decimal, e.g., 0.85 for 85%
+}
+
+export type ActiveTargetFilterType =
+  | "revenue"
+  | "margin"
+  | "sellin"
+  | "sellthrough";
+
+export interface ActiveTargetFilter {
+  type: ActiveTargetFilterType;
+  displayName: string;
 }

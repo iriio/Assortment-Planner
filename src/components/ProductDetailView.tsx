@@ -1,25 +1,32 @@
 import React, { useState } from "react";
-import { PlannedStyle, ProductTag } from "../types";
-import { productTagLibrary } from "../data/index";
 import {
-  ChevronLeftIcon,
-  PencilIcon,
-  TagIcon,
   PlusIcon,
   XMarkIcon,
+  ChevronLeftIcon,
+  TagIcon,
   CollectionIcon,
+  PencilIcon,
+  ChevronRightIcon,
 } from "./icons";
+import { PlannedStyle, ProductTag } from "../types";
+import { productTagLibrary } from "../data/index";
+import TagChip from "./TagChip";
+import ProductImagePlaceholder from "./ProductImagePlaceholder";
 
 interface ProductDetailViewProps {
   product: PlannedStyle;
   onBack: () => void;
   onUpdateProduct: (updatedProduct: PlannedStyle) => void;
+  categoryName: string;
+  programName: string;
 }
 
 const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   product,
   onBack,
   onUpdateProduct,
+  categoryName,
+  programName,
 }) => {
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
   const [selectedTagCategory, setSelectedTagCategory] = useState<string | null>(
@@ -68,180 +75,196 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     onUpdateProduct(updatedProduct);
   };
 
-  const getTagColorClasses = (color: string) => {
-    const colorMap: Record<string, string> = {
-      blue: "bg-blue-100 text-blue-800 border-blue-200",
-      indigo: "bg-indigo-100 text-indigo-800 border-indigo-200",
-      green: "bg-green-100 text-green-800 border-green-200",
-      purple: "bg-purple-100 text-purple-800 border-purple-200",
-      gray: "bg-gray-100 text-gray-800 border-gray-200",
-      slate: "bg-slate-100 text-slate-800 border-slate-200",
-      pink: "bg-pink-100 text-pink-800 border-pink-200",
-      orange: "bg-orange-100 text-orange-800 border-orange-200",
-      cyan: "bg-cyan-100 text-cyan-800 border-cyan-200",
-      amber: "bg-amber-100 text-amber-800 border-amber-200",
-      yellow: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      red: "bg-red-100 text-red-800 border-red-200",
-      emerald: "bg-emerald-100 text-emerald-800 border-emerald-200",
-      violet: "bg-violet-100 text-violet-800 border-violet-200",
-      teal: "bg-teal-100 text-teal-800 border-teal-200",
-      lime: "bg-lime-100 text-lime-800 border-lime-200",
-      sky: "bg-sky-100 text-sky-800 border-sky-200",
-      neutral: "bg-neutral-100 text-neutral-800 border-neutral-200",
-    };
-    return colorMap[color] || "bg-gray-100 text-gray-800 border-gray-200";
-  };
-
   const currentTags = getTagsForProduct();
   const availableTags = getAvailableTags();
   const availableTagsByCategory = getTagsByCategory(availableTags);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <button
-            onClick={onBack}
-            className="p-2 mr-3 text-slate-500 hover:bg-slate-200 rounded-full transition-colors active:bg-slate-300"
-            title="Back to Project"
-          >
-            <ChevronLeftIcon className="w-5 h-5" />
-          </button>
+    <div className="h-full flex flex-col">
+      {/* Header - Outside the card */}
+      <div className="p-4 md:p-5 border-b border-slate-200 bg-white shadow-sm">
+        {/* Title and Actions Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl lg:text-2xl font-semibold text-slate-800">
+            <h2 className="text-xl md:text-2xl font-bold text-slate-800">
               {product.name}
             </h2>
-            <p className="text-sm text-slate-600">{product.color}</p>
+            <p className="text-sm text-slate-600 mt-1">{product.color}</p>
           </div>
-        </div>
-        <button className="flex items-center space-x-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors">
-          <PencilIcon className="w-4 h-4" />
-          <span>Edit Product</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Product Image */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div className="aspect-w-1 aspect-h-1 bg-slate-100 rounded-lg overflow-hidden mb-4">
-            {product.imageUrl ? (
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <CollectionIcon className="w-16 h-16 text-slate-300" />
-              </div>
-            )}
-          </div>
-          <div className="text-center">
-            <h3 className="text-lg font-medium text-slate-900 mb-1">
-              {product.name}
-            </h3>
-            <p className="text-sm text-slate-500">{product.color}</p>
-          </div>
-        </div>
-
-        {/* Product Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">
-            Product Details
-          </h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-slate-500">Status</p>
-                <p className="font-medium text-slate-900">{product.status}</p>
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Margin</p>
-                <p className="font-medium text-slate-900">
-                  {(product.margin * 100).toFixed(1)}%
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-slate-500">Cost Price</p>
-                <p className="font-medium text-slate-900">
-                  ${product.costPrice.toFixed(2)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-slate-500">Selling Price</p>
-                <p className="font-medium text-slate-900">
-                  ${product.sellingPrice.toFixed(2)}
-                </p>
-              </div>
-            </div>
-            {(product.projectedSellIn || product.projectedSellThrough) && (
-              <div className="grid grid-cols-2 gap-4">
-                {product.projectedSellIn && (
-                  <div>
-                    <p className="text-sm text-slate-500">Projected Sell-In</p>
-                    <p className="font-medium text-slate-900">
-                      {product.projectedSellIn.toLocaleString()}
-                    </p>
-                  </div>
-                )}
-                {product.projectedSellThrough && (
-                  <div>
-                    <p className="text-sm text-slate-500">
-                      Projected Sell-Through
-                    </p>
-                    <p className="font-medium text-slate-900">
-                      {(product.projectedSellThrough * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Tags Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-              <TagIcon className="w-5 h-5 mr-2" />
-              Product Tags
-            </h3>
-            <button
-              onClick={() => setIsTagSelectorOpen(true)}
-              className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-sky-100 text-sky-700 hover:bg-sky-200 rounded-lg transition-colors"
-            >
-              <PlusIcon className="w-4 h-4" />
-              <span>Add Tag</span>
+          <div className="flex items-center space-x-3 mt-3 sm:mt-0">
+            <button className="flex items-center space-x-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors">
+              <PencilIcon className="w-4 h-4" />
+              <span>Edit Product</span>
             </button>
           </div>
+        </div>
+      </div>
 
-          {/* Current Tags */}
-          <div className="space-y-3">
-            {currentTags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {currentTags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getTagColorClasses(
-                      tag.color
-                    )}`}
-                  >
-                    {tag.name}
-                    <button
-                      onClick={() => removeTag(tag.id)}
-                      className="ml-1.5 hover:text-red-600 transition-colors"
-                    >
-                      <XMarkIcon className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
+      {/* Main Content Card */}
+      <div className="flex-1 p-6 min-h-0">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 h-full">
+          <div className="grid grid-cols-12 gap-0 h-full divide-x-2 divide-slate-200">
+            {/* Left Column - Image */}
+            <div className="col-span-3 p-6">
+              <div className="aspect-square bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <ProductImagePlaceholder
+                    productName={product.name}
+                    size="lg"
+                  />
+                )}
               </div>
-            ) : (
-              <p className="text-sm text-slate-500 italic">No tags assigned</p>
-            )}
+            </div>
+
+            {/* Middle Column - Info & Components */}
+            <div className="col-span-6 p-6 overflow-y-auto">
+              <div className="space-y-6">
+                {/* Product Details Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                    Product Details
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <h4 className="text-xs text-slate-500 uppercase font-semibold">
+                        Status
+                      </h4>
+                      <p className="text-slate-700 mt-0.5">{product.status}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs text-slate-500 uppercase font-semibold">
+                        Margin
+                      </h4>
+                      <p className="text-slate-700 mt-0.5">
+                        {(product.margin * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs text-slate-500 uppercase font-semibold">
+                        Cost Price
+                      </h4>
+                      <p className="text-slate-700 mt-0.5">
+                        ${product.costPrice.toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs text-slate-500 uppercase font-semibold">
+                        Selling Price
+                      </h4>
+                      <p className="text-slate-700 mt-0.5">
+                        ${product.sellingPrice.toFixed(2)}
+                      </p>
+                    </div>
+                    {(product.projectedSellIn ||
+                      product.projectedSellThrough) && (
+                      <>
+                        {product.projectedSellIn && (
+                          <div>
+                            <h4 className="text-xs text-slate-500 uppercase font-semibold">
+                              Projected Sell-In
+                            </h4>
+                            <p className="text-slate-700 mt-0.5">
+                              {product.projectedSellIn.toLocaleString()} units
+                            </p>
+                          </div>
+                        )}
+                        {product.projectedSellThrough && (
+                          <div>
+                            <h4 className="text-xs text-slate-500 uppercase font-semibold">
+                              Projected Sell-Through
+                            </h4>
+                            <p className="text-slate-700 mt-0.5">
+                              {(product.projectedSellThrough * 100).toFixed(1)}%
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Components Section */}
+                <div className="pt-6 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-slate-800">
+                      Components
+                    </h3>
+                    <button className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-sky-100 text-sky-700 hover:bg-sky-200 rounded-lg transition-colors">
+                      <PencilIcon className="w-4 h-4" />
+                      <span>Edit Components</span>
+                    </button>
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    Component management will be implemented in a future update.
+                  </div>
+                </div>
+
+                {/* Notes Section - Placeholder */}
+                <div className="pt-6 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-slate-800">
+                      Notes
+                    </h3>
+                    <button className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-sky-100 text-sky-700 hover:bg-sky-200 rounded-lg transition-colors">
+                      <PencilIcon className="w-4 h-4" />
+                      <span>Add Note</span>
+                    </button>
+                  </div>
+                  <div className="text-sm text-slate-500 italic">
+                    No notes added yet.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Tags */}
+            <div className="col-span-3 p-6">
+              <div className="sticky top-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-800 flex items-center">
+                    <TagIcon className="w-5 h-5 mr-2" />
+                    Product Tags
+                  </h3>
+                  <button
+                    onClick={() => setIsTagSelectorOpen(true)}
+                    className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-sky-100 text-sky-700 hover:bg-sky-200 rounded-lg transition-colors"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    <span>Add</span>
+                  </button>
+                </div>
+
+                {/* Current Tags */}
+                <div className="space-y-3">
+                  {currentTags.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {currentTags.map((tag) => (
+                        <div key={tag.id} className="relative group">
+                          <TagChip tag={tag} size="sm" />
+                          <button
+                            onClick={() => removeTag(tag.id)}
+                            className="absolute -right-1 top-1/2 -translate-y-1/2 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100"
+                            title="Remove tag"
+                          >
+                            <XMarkIcon className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">
+                      No tags assigned
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -311,12 +334,10 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                                 addTag(tag.id);
                                 setIsTagSelectorOpen(false);
                               }}
-                              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors hover:shadow-sm ${getTagColorClasses(
-                                tag.color
-                              )}`}
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors hover:shadow-sm bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
                             >
-                              <PlusIcon className="w-3 h-3 mr-1" />
-                              {tag.name}
+                              <PlusIcon className="w-3 h-3" />
+                              <span>{tag.name}</span>
                             </button>
                           ))}
                         </div>

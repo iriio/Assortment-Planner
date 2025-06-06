@@ -1,3 +1,36 @@
+/**
+ * CATEGORY DETAIL PAGE - Detailed view for managing individual product categories
+ *
+ * LAYOUT STRUCTURE:
+ * ┌──────────────────────────────────────────────────────────────────┐
+ * │                        Header Bar                                │
+ * │  - Back button to overview                                       │
+ * │  - Category name and status                                      │
+ * │  - Metric view toggle                                           │
+ * │  - Add style button                                             │
+ * └──────────────────────────────────────────────────────────────────┤
+ * │                                                                  │
+ * │                    STYLES TABLE/GRID                             │
+ * │  ┌─────────┬──────────┬─────────┬─────────┬─────────────────┐   │
+ * │  │ Image   │   Name   │  Price  │ Margin  │    Actions      │   │
+ * │  ├─────────┼──────────┼─────────┼─────────┼─────────────────┤   │
+ * │  │   []    │ Style 1  │  $99    │  65%    │ [Edit] [Comp]   │   │
+ * │  │   []    │ Style 2  │  $149   │  58%    │ [Edit] [Comp]   │   │
+ * │  │   []    │ Style 3  │  $79    │  72%    │ [Edit] [Comp]   │   │
+ * │  └─────────┴──────────┴─────────┴─────────┴─────────────────┘   │
+ * │                                                                  │
+ * │                    [+ Add New Style]                             │
+ * │                                                                  │
+ * └──────────────────────────────────────────────────────────────────┘
+ *
+ * FUNCTIONALITY:
+ * - Individual style management (CRUD operations)
+ * - Component/material assignment for costing
+ * - Financial calculations (cost, price, margin)
+ * - Status tracking and workflow management
+ * - Visual metric displays (bars, chips, text)
+ */
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -5,8 +38,11 @@ import {
   PlannedStyle,
   MasterComponent,
   PlannedStyleStatus,
+  PLMStatusStage,
   StyleComponentUsage,
   StyleMetricViewOption,
+  UserRole,
+  LinePlan,
 } from "../types";
 import { masterComponentsData as allMasterComponents } from "../data";
 import { updateStyleFinancials, generateId } from "../services/planningService";
@@ -19,17 +55,27 @@ import {
   ChevronLeftIcon,
   CollectionIcon,
   InformationCircleIcon,
+  ArrowUpRightIcon,
 } from "../components/icons";
+import TagListDisplay from "../components/TagListDisplay";
+import StatusBadge from "../components/StatusBadge";
+import { calculateCategoryStatus } from "../utils/statusSystem";
 
+// Props interface for the category detail page
 interface CategoryDetailPageProps {
-  categories: LinePlanCategory[];
-  targetOverallMargin: number;
+  linePlans: LinePlan[];
+  currentLinePlan: LinePlan | null;
+  setLinePlans: React.Dispatch<React.SetStateAction<LinePlan[]>>;
   onUpdateStyle: (categoryId: string, updatedStyle: PlannedStyle) => void;
   onAddStyle: (categoryId: string, newStyle: PlannedStyle) => void;
+  onCategoryStatusChange: (
+    category: LinePlanCategory,
+    status: PLMStatusStage
+  ) => void;
   styleMetricView: StyleMetricViewOption;
-  setStyleMetricView: (view: StyleMetricViewOption) => void;
 }
 
+// Style metric display options for different visualization modes
 const STYLE_METRIC_VIEW_OPTIONS: {
   value: StyleMetricViewOption;
   label: string;
@@ -39,31 +85,58 @@ const STYLE_METRIC_VIEW_OPTIONS: {
   { value: "chip", label: "Colored Chip" },
 ];
 
+/**
+ * MAIN COMPONENT: CategoryDetailPage
+ * Handles detailed management of individual product categories including:
+ * - Style creation and editing
+ * - Component/material assignment
+ * - Financial calculations
+ * - Status management and workflow
+ */
 const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
-  categories,
-  targetOverallMargin,
+  linePlans,
+  currentLinePlan,
+  setLinePlans,
   onUpdateStyle,
   onAddStyle,
+  onCategoryStatusChange,
   styleMetricView,
-  setStyleMetricView,
 }) => {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // COMPONENT STATE: Current category and editing states
   const [category, setCategory] = useState<LinePlanCategory | undefined>(
     undefined
   );
   const [editingStyle, setEditingStyle] = useState<PlannedStyle | null>(null);
+
+  // MODAL STATES: Control for different modal dialogs
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
   const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
-  const [styleForm, setStyleForm] = useState<Partial<PlannedStyle>>({});
 
+  // FORM STATE: Style creation/editing form data
+  const [styleForm, setStyleForm] = useState<Partial<PlannedStyle>>({
+    name: "",
+    color: "",
+    sellingPrice: 0,
+    costPrice: 0,
+    status: PlannedStyleStatus.PLACEHOLDER,
+    components: [],
+    projectedSellThrough: 0.8,
+    projectedSellIn: 100,
+  });
+
+  // EFFECT: Load category data when route parameter changes
   useEffect(() => {
-    const currentCategory = categories.find((c) => c.id === categoryId);
+    const currentCategory = currentLinePlan?.categories.find(
+      (c) => c.id === categoryId
+    );
     setCategory(currentCategory);
-  }, [categoryId, categories]);
+  }, [categoryId, currentLinePlan]);
 
+  // EFFECT: Handle URL-based actions (e.g., ?action=add for creating new styles)
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     if (queryParams.get("action") === "add" && category && !isStyleModalOpen) {
@@ -71,11 +144,16 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
     }
   }, [location.search, category, isStyleModalOpen]);
 
+  /**
+   * MODAL FUNCTIONS: Handle opening/closing of style editing modal
+   */
   const openStyleModal = (style?: PlannedStyle) => {
     if (style) {
+      // EDIT MODE: Pre-populate form with existing style data
       setEditingStyle(style);
       setStyleForm({ ...style });
     } else {
+      // CREATE MODE: Initialize with default values
       setEditingStyle(null);
       setStyleForm({
         id: generateId(),
@@ -88,7 +166,8 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
         )}/300/400`,
         sellingPrice: 0,
         components: [],
-        notes: "",
+        projectedSellThrough: 0.8,
+        projectedSellIn: 100,
       });
     }
     setIsStyleModalOpen(true);
@@ -98,11 +177,15 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
     setIsStyleModalOpen(false);
     setEditingStyle(null);
     setStyleForm({});
+    // Clear URL query parameters when closing
     if (new URLSearchParams(location.search).get("action") === "add") {
       navigate(location.pathname, { replace: true });
     }
   };
 
+  /**
+   * FORM HANDLERS: Manage form input changes and validation
+   */
   const handleStyleFormChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -115,67 +198,91 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
     }));
   };
 
+  /**
+   * SAVE FUNCTION: Process and save style data with financial calculations
+   */
   const handleSaveStyle = () => {
-    if (!category || !styleForm.name || styleForm.sellingPrice === undefined) {
-      alert("Style Name and Selling Price are required.");
+    if (!category) {
+      alert("Category not found. Cannot save style.");
       return;
     }
-    let styleToSave: PlannedStyle = editingStyle
-      ? ({ ...editingStyle, ...styleForm } as PlannedStyle)
-      : {
-          id: styleForm.id || generateId(),
-          name: styleForm.name,
-          status: styleForm.status || PlannedStyleStatus.PLACEHOLDER,
-          color: styleForm.color || "N/A",
-          imageUrl:
-            styleForm.imageUrl ||
-            `https://picsum.photos/seed/${generateId().substring(
-              0,
-              6
-            )}/300/400`,
-          sellingPrice: styleForm.sellingPrice || 0,
-          components: styleForm.components || [],
-          costPrice: 0,
-          margin: 0,
-          notes: styleForm.notes,
-        };
-    const updatedFinancialsStyle = updateStyleFinancials(
-      styleToSave,
-      allMasterComponents
-    );
-    if (editingStyle) onUpdateStyle(category.id, updatedFinancialsStyle);
-    else onAddStyle(category.id, updatedFinancialsStyle);
+    if (!styleForm.name || !styleForm.color) {
+      alert("Style Name and Color are required.");
+      return;
+    }
+
+    // FINANCIAL CALCULATIONS: Cost, price, and margin computation
+    const costPrice = Number(styleForm.costPrice) || 0;
+    const sellingPrice = Number(styleForm.sellingPrice) || 0;
+    let margin = 0;
+    if (sellingPrice > 0) {
+      margin = (sellingPrice - costPrice) / sellingPrice;
+    }
+
+    // BUILD STYLE OBJECT: Compile all style data
+    const styleToSave: PlannedStyle = {
+      id: editingStyle?.id || generateId(),
+      name: styleForm.name || "New Style",
+      color: styleForm.color || "N/A",
+      costPrice: costPrice,
+      sellingPrice: sellingPrice,
+      margin: margin,
+      status: styleForm.status || PlannedStyleStatus.PLACEHOLDER,
+      plmStatus: editingStyle?.plmStatus || PLMStatusStage.BRIEFING,
+      imageUrl: styleForm.imageUrl || editingStyle?.imageUrl,
+      components: styleForm.components || editingStyle?.components || [],
+      projectedSellThrough: Number(styleForm.projectedSellThrough) || 0,
+      projectedSellIn: Number(styleForm.projectedSellIn) || 0,
+      tags: styleForm.tags || editingStyle?.tags || [],
+    };
+
+    // SAVE ACTION: Update or create style
+    if (editingStyle) onUpdateStyle(category.id, styleToSave);
+    else onAddStyle(category.id, styleToSave);
     closeStyleModal();
   };
 
+  /**
+   * COMPONENT MODAL FUNCTIONS: Handle material/component assignment
+   */
   const openComponentModal = (style: PlannedStyle) => {
     setEditingStyle(style);
     setStyleForm({ ...style });
     setIsComponentModalOpen(true);
   };
+
   const closeComponentModal = () => {
     setIsComponentModalOpen(false);
     setEditingStyle(null);
     setStyleForm({});
   };
 
+  /**
+   * COMPONENT MANAGEMENT: Handle adding/removing components from styles
+   */
   const handleComponentChange = (
     componentType: MasterComponent["type"],
     newComponentId: string
   ) => {
     if (!editingStyle || !styleForm.components) return;
+
+    // COMPONENT DATA: Get master component details for calculations
     const masterCompDetails = allMasterComponents.find(
       (mc) => mc.id === newComponentId
     );
     const quantity = masterCompDetails?.type === "FABRIC" ? 1.5 : 1;
+
+    // FIND EXISTING: Check if component type already exists
     const existingComponentIndex = styleForm.components.findIndex(
       (c) =>
         allMasterComponents.find((mc) => mc.id === c.componentId)?.type ===
         componentType
     );
+
     let updatedComponents: StyleComponentUsage[];
     if (existingComponentIndex > -1) {
       if (newComponentId === "")
+        // REMOVE: Delete component if empty ID provided
         updatedComponents = styleForm.components.filter(
           (_, index) => index !== existingComponentIndex
         );
@@ -197,7 +304,10 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
   };
 
   const handleSaveComponents = () => {
-    if (!category || !editingStyle || !styleForm.components) return;
+    if (!category || !editingStyle || !styleForm.components) {
+      alert("Category or style data missing. Cannot save components.");
+      return;
+    }
     const styleWithNewComponents: PlannedStyle = {
       ...editingStyle,
       components: styleForm.components,
@@ -231,75 +341,34 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
   }
 
   const getMarginIndicator = (margin: number) => {
-    const targetMargin = category.targetMargin || targetOverallMargin;
-    if (margin < targetMargin * 0.85)
-      return (
-        <span title={`Low margin (${(targetMargin * 100).toFixed(1)}% target)`}>
-          <ExclamationTriangleIcon className="w-5 h-5 text-red-500" />
-        </span>
-      );
-    if (margin < targetMargin)
-      return (
-        <span
-          title={`Margin below target (${(targetMargin * 100).toFixed(
-            1
-          )}% target)`}
-        >
-          <InformationCircleIcon className="w-5 h-5 text-amber-500" />
-        </span>
-      );
-    return (
-      <span title="Margin meets target">
-        <CheckCircleIcon className="w-5 h-5 text-green-500" />
-      </span>
-    );
+    if (!currentLinePlan) return null;
+    if (margin < currentLinePlan.targetOverallMargin * 0.85) {
+      return <ExclamationTriangleIcon className="w-3 h-3 mr-1 text-red-600" />;
+    } else if (margin < currentLinePlan.targetOverallMargin) {
+      return <ArrowUpRightIcon className="w-3 h-3 mr-1 text-amber-600" />;
+    } else {
+      return <CheckCircleIcon className="w-3 h-3 mr-1 text-green-600" />;
+    }
   };
 
   const renderStyleMarginCell = (style: PlannedStyle) => {
-    const targetMargin = category.targetMargin || targetOverallMargin;
+    if (!currentLinePlan) return null;
+    const margin = style.margin;
+    const marginColorClass =
+      margin < currentLinePlan.targetOverallMargin * 0.85
+        ? "text-red-600"
+        : margin < currentLinePlan.targetOverallMargin
+        ? "text-amber-600"
+        : "text-green-600";
 
-    if (style.margin < targetMargin * 0.85)
-      return <span className="text-red-600 font-semibold">{"⚠️ Low"}</span>;
-    else if (style.margin < targetMargin)
-      return <span className="text-amber-600 font-semibold">{"⚠️ Below"}</span>;
-
-    switch (styleMetricView) {
-      case "dataBar":
-        const barWidth = Math.min(
-          Math.min(100, (style.margin / (targetMargin * 1.2)) * 100)
-        );
-        return (
-          <div className="w-16 bg-slate-200 rounded-full h-3 relative">
-            <div
-              className="bg-green-500 h-3 rounded-full"
-              style={{ width: `${barWidth}%` }}
-            />
-            <span className="absolute inset-0 text-xs font-semibold text-slate-700 flex items-center justify-center">
-              {(style.margin * 100).toFixed(1)}%
-            </span>
-          </div>
-        );
-      case "chip":
-        let chipColor;
-        if (style.margin < targetMargin * 0.85)
-          chipColor = "bg-red-100 text-red-800 border-red-200";
-        else if (style.margin < targetMargin)
-          chipColor = "bg-amber-100 text-amber-800 border-amber-200";
-        else chipColor = "bg-green-100 text-green-800 border-green-200";
-        return (
-          <span
-            className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${chipColor}`}
-          >
-            {(style.margin * 100).toFixed(1)}%
-          </span>
-        );
-      default:
-        return (
-          <span className="font-semibold text-slate-700">
-            {(style.margin * 100).toFixed(1)}%
-          </span>
-        );
-    }
+    return (
+      <div className="flex items-center">
+        <span className={`font-medium ${marginColorClass}`}>
+          {(margin * 100).toFixed(1)}%
+        </span>
+        {getMarginIndicator(margin)}
+      </div>
+    );
   };
 
   const styleModalFooter = (
@@ -340,394 +409,76 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
     </>
   );
 
+  const categoryPlmStatus =
+    category.plmStatus || calculateCategoryStatus(category);
+
   return (
-    <div className="p-5 md:p-6 space-y-6 bg-slate-50 flex-1 overflow-y-auto">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <div className="flex items-center">
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center space-x-4">
           <button
             onClick={() => navigate("/")}
-            className="p-2 mr-3 text-slate-500 hover:bg-slate-200 rounded-full transition-colors active:bg-slate-300"
-            title="Back to Overview"
+            className="p-2 hover:bg-muted rounded-lg"
           >
             <ChevronLeftIcon className="w-5 h-5" />
           </button>
-          <h2 className="text-xl lg:text-2xl font-semibold text-slate-800">
-            {category.name} - Styles{" "}
-            <span className="text-slate-500 font-normal text-lg">
-              ({category.plannedStyles.length})
-            </span>
-          </h2>
-        </div>
-        <div className="flex items-center space-x-2.5">
-          <div className="w-48">
-            <label htmlFor="styleMetricView" className="sr-only">
-              Style Metric Display
-            </label>
-            <select
-              id="styleMetricView"
-              value={styleMetricView}
-              onChange={(e) =>
-                setStyleMetricView(e.target.value as StyleMetricViewOption)
-              }
-              className="block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 text-xs bg-white"
-            >
-              {STYLE_METRIC_VIEW_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+          <div>
+            <h1 className="text-lg font-semibold">{category?.name}</h1>
+            <div className="flex items-center space-x-2">
+              <StatusBadge
+                status={
+                  category?.plmStatus || calculateCategoryStatus(category!)
+                }
+              />
+              <span className="text-sm text-muted-foreground">
+                {category?.plannedStyles.length || 0} styles
+              </span>
+            </div>
           </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <select
+            value={styleMetricView}
+            className="text-sm border rounded-md px-2 py-1"
+          >
+            {STYLE_METRIC_VIEW_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => openStyleModal()}
-            className="bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-3.5 rounded-lg shadow-md hover:shadow-lg flex items-center space-x-1.5 text-sm transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-1 active:bg-sky-700"
-            title="Add a new placeholder style to this category"
+            className="flex items-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
           >
-            <PlusCircleIcon className="w-4 h-4" />
-            <span>Add Placeholder</span>
+            <PlusCircleIcon className="w-5 h-5" />
+            <span>Add Style</span>
           </button>
         </div>
       </div>
-
-      <div className="bg-white shadow-xl overflow-x-auto rounded-xl border border-slate-200/80">
-        <table className="min-w-full divide-y divide-slate-200/80">
-          <thead className="bg-slate-100/80">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Image
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Color
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Cost
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Price
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Margin
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Indicator
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-slate-200/70">
-            {category.plannedStyles.map((style) => (
-              <tr
-                key={style.id}
-                className="hover:bg-slate-50/80 transition-colors duration-100 group"
-              >
-                <td className="px-4 py-2.5">
-                  <img
-                    src={style.imageUrl || "/images/placeholder.jpg"}
-                    alt={style.name}
-                    className="w-16 h-20 object-cover rounded-md shadow-sm border border-slate-200"
-                  />
-                </td>
-                <td className="px-4 py-2.5 text-sm font-medium text-slate-800 whitespace-nowrap">
-                  {style.name}
-                </td>
-                <td className="px-4 py-2.5 text-sm text-slate-600">
-                  {style.status}
-                </td>
-                <td className="px-4 py-2.5 text-sm text-slate-600">
-                  {style.color}
-                </td>
-                <td className="px-4 py-2.5 text-sm text-slate-600 text-right">
-                  ${style.costPrice.toFixed(2)}
-                </td>
-                <td className="px-4 py-2.5 text-sm text-slate-600 text-right">
-                  ${style.sellingPrice.toFixed(2)}
-                </td>
-                <td className="px-4 py-2.5 text-sm text-right">
-                  {renderStyleMarginCell(style)}
-                </td>
-                <td className="px-4 py-2.5 text-center">
-                  {getMarginIndicator(style.margin)}
-                </td>
-                <td className="px-4 py-2.5 text-sm space-x-1 whitespace-nowrap">
-                  <button
-                    onClick={() => openStyleModal(style)}
-                    className="text-sky-600 hover:text-sky-700 p-1.5 rounded-md hover:bg-sky-100/70 transition-colors active:bg-sky-200/70"
-                    title="Edit Style Details"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => openComponentModal(style)}
-                    className="text-indigo-600 hover:text-indigo-700 p-1.5 rounded-md hover:bg-indigo-100/70 transition-colors active:bg-indigo-200/70"
-                    title="Change Components"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-4 h-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                      />
-                    </svg>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {category.plannedStyles.length === 0 && (
-          <div className="text-center py-16 px-6">
-            <CollectionIcon className="mx-auto h-12 w-12 text-slate-300" />
-            <h3 className="mt-4 text-md font-semibold text-slate-700">
-              No Styles Yet
-            </h3>
-            <p className="mt-1.5 text-sm text-slate-500">
-              This category is empty. Get started by adding a placeholder style.
-            </p>
-            <button
-              onClick={() => openStyleModal()}
-              className="mt-6 bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center mx-auto space-x-1.5 active:bg-sky-700"
-              title="Add Placeholder Style"
-            >
-              <PlusCircleIcon className="w-4 h-4" />
-              <span>Add Placeholder</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      <Modal
-        isOpen={isStyleModalOpen}
-        onClose={closeStyleModal}
-        title={editingStyle ? "Edit Style" : "Add Placeholder Style"}
-        size="lg"
-        footer={styleModalFooter}
-      >
-        <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Style Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              id="name"
-              value={styleForm.name || ""}
-              onChange={handleStyleFormChange}
-              className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm p-2.5 bg-white"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="status"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Status
-            </label>
-            <select
-              name="status"
-              id="status"
-              value={styleForm.status || PlannedStyleStatus.PLACEHOLDER}
-              onChange={handleStyleFormChange}
-              className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm p-2.5 bg-white"
-            >
-              {Object.values(PlannedStyleStatus).map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-          {(editingStyle?.status !== PlannedStyleStatus.PLACEHOLDER &&
-            styleForm.status !== PlannedStyleStatus.PLACEHOLDER) ||
-          (editingStyle &&
-            editingStyle.status !== PlannedStyleStatus.PLACEHOLDER) ? (
-            <div>
-              <label
-                htmlFor="color"
-                className="block text-sm font-medium text-slate-700"
-              >
-                Color
-              </label>
-              <input
-                type="text"
-                name="color"
-                id="color"
-                value={styleForm.color || ""}
-                onChange={handleStyleFormChange}
-                className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm p-2.5 bg-white"
-              />
+      <div className="p-5 md:p-6 space-y-6 bg-slate-50 flex-1 overflow-y-auto">
+        <div className="p-4 sm:p-6 bg-white rounded-xl shadow-lg border border-slate-200/80">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-grow min-w-0">
+              <div className="flex items-center mb-1.5">
+                <button
+                  onClick={() => navigate("/")}
+                  className="p-2 mr-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors active:bg-slate-200"
+                  title="Back to Overview"
+                >
+                  <ChevronLeftIcon className="w-5 h-5" />
+                </button>
+                <h1
+                  className="text-2xl lg:text-3xl font-bold text-slate-800 truncate"
+                  title={category?.name}
+                >
+                  {category?.name}
+                </h1>
+              </div>
             </div>
-          ) : null}
-          <div>
-            <label
-              htmlFor="sellingPrice"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Selling Price ($) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="sellingPrice"
-              id="sellingPrice"
-              value={styleForm.sellingPrice || ""}
-              onChange={handleStyleFormChange}
-              className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm p-2.5 bg-white"
-              min="0"
-              step="0.01"
-            />
           </div>
-          <div>
-            <label
-              htmlFor="notes"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Notes
-            </label>
-            <textarea
-              name="notes"
-              id="notes"
-              value={styleForm.notes || ""}
-              onChange={handleStyleFormChange}
-              rows={3}
-              className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm p-2.5 bg-white"
-            />
-          </div>
-          {editingStyle && (
-            <div className="text-sm p-3.5 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="font-medium text-slate-700">Current Financials:</p>
-              <p className="text-slate-600">
-                Cost:{" "}
-                <span className="font-semibold">
-                  ${editingStyle.costPrice.toFixed(2)}
-                </span>
-              </p>
-              <p className="text-slate-600">
-                Margin:{" "}
-                <span className="font-semibold">
-                  {(editingStyle.margin * 100).toFixed(1)}%
-                </span>
-              </p>
-            </div>
-          )}
         </div>
-      </Modal>
-
-      <Modal
-        isOpen={isComponentModalOpen}
-        onClose={closeComponentModal}
-        title={`Change Components for: ${editingStyle?.name || ""}`}
-        size="lg"
-        footer={componentModalFooter}
-      >
-        {editingStyle && styleForm.components !== undefined && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              Select new components to update the style's cost and margin.
-            </p>
-            <div className="p-3.5 bg-slate-100 rounded-lg border border-slate-200 mb-4">
-              <p className="text-sm font-medium text-slate-700">
-                Current Financials:
-              </p>
-              <p className="text-xs text-slate-600">
-                Cost:{" "}
-                <span className="font-semibold">
-                  ${editingStyle.costPrice.toFixed(2)}
-                </span>
-              </p>
-              <p className="text-xs text-slate-600">
-                Margin:{" "}
-                <span className="font-semibold">
-                  {(editingStyle.margin * 100).toFixed(1)}%
-                </span>
-              </p>
-            </div>
-
-            {(["FABRIC", "ZIPPER", "BUTTON"] as MasterComponent["type"][]).map(
-              (componentType) => {
-                const currentCompUsage = styleForm.components?.find(
-                  (c) =>
-                    allMasterComponents.find((mc) => mc.id === c.componentId)
-                      ?.type === componentType
-                );
-                const availableCompsOfType = allMasterComponents.filter(
-                  (mc) => mc.type === componentType
-                );
-
-                return (
-                  <div key={componentType}>
-                    <label
-                      htmlFor={`component-${componentType}`}
-                      className="block text-sm font-medium text-slate-700 capitalize"
-                    >
-                      {componentType.toLowerCase()}
-                    </label>
-                    <select
-                      name={`component-${componentType}`}
-                      id={`component-${componentType}`}
-                      value={currentCompUsage?.componentId || ""}
-                      onChange={(e) =>
-                        handleComponentChange(componentType, e.target.value)
-                      }
-                      className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm bg-white"
-                    >
-                      <option value="">None / Keep Current or Remove</option>
-                      {availableCompsOfType.map((comp) => (
-                        <option key={comp.id} value={comp.id}>
-                          {comp.name} (${comp.cost.toFixed(2)})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-            )}
-
-            {(() => {
-              const tempStyle = updateStyleFinancials(
-                { ...editingStyle, components: styleForm.components! },
-                allMasterComponents
-              );
-              return (
-                <div className="mt-4 p-3.5 bg-sky-50 rounded-lg border border-sky-200">
-                  <p className="text-sm font-medium text-sky-700">
-                    Preview with new components:
-                  </p>
-                  <p className="text-xs text-sky-600">
-                    New Cost:{" "}
-                    <span className="font-semibold">
-                      ${tempStyle.costPrice.toFixed(2)}
-                    </span>
-                  </p>
-                  <p className="text-xs text-sky-600">
-                    New Margin:{" "}
-                    <span className="font-semibold">
-                      {(tempStyle.margin * 100).toFixed(1)}%
-                    </span>
-                  </p>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-      </Modal>
+      </div>
     </div>
   );
 };

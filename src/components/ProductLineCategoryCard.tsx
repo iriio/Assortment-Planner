@@ -3,6 +3,10 @@ import {
   LinePlanCategory,
   CategoryMetricViewOption,
   PlannedStyleStatus,
+  UserRole,
+  PLMStatusStage,
+  PlannedStyle,
+  ActiveTargetFilterType,
 } from "../types";
 import {
   PlusIcon,
@@ -12,16 +16,25 @@ import {
   CollectionIcon,
   EllipsisVerticalIcon,
 } from "./icons";
+import { calculateCategoryStatus } from "../utils/statusSystem";
+import StatusBadge from "./StatusBadge";
+import TagListDisplay from "./TagListDisplay";
+import ProductImagePlaceholder from "./ProductImagePlaceholder";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { PlusIcon as HeroPlusIcon } from "@heroicons/react/24/outline";
 
 interface ProductLineCategoryCardProps {
   category: LinePlanCategory;
-  onSelectCategory: (categoryId: string) => void;
-  onAddNewStyle: (categoryId: string) => void;
-  activeTargetFilter: { type: string; displayName: string } | null;
+  onSelectCategory: (category: LinePlanCategory) => void;
+  onAddNewStyle: (category: LinePlanCategory) => void;
+  activeTargetFilter: ActiveTargetFilterType | null;
   targetOverallMargin: number;
   season: string;
-  displayMode?: "grid" | "list";
-  metricViewStyle?: CategoryMetricViewOption;
+  displayMode: "grid" | "list" | "table";
+  metricViewStyle: CategoryMetricViewOption;
+  userRole: UserRole;
+  onStatusChange: (category: LinePlanCategory, status: PLMStatusStage) => void;
 }
 
 const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
@@ -31,8 +44,10 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
   activeTargetFilter,
   targetOverallMargin,
   season,
-  displayMode = "grid",
-  metricViewStyle = "current",
+  displayMode,
+  metricViewStyle,
+  userRole,
+  onStatusChange,
 }) => {
   const avgCategoryMargin =
     category.plannedStyles.length > 0
@@ -68,7 +83,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
       icon: React.ReactElement;
     } | null = null;
 
-    switch (activeTargetFilter.type) {
+    switch (activeTargetFilter) {
       case "margin":
         if (avgCategoryMargin < targetOverallMargin * 0.85) {
           status = {
@@ -184,7 +199,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
   };
 
   const status = getMetricStatus();
-  const baseCardClasses = `bg-white rounded-xl shadow-lg border transition-all group hover:shadow-xl hover:border-slate-300/70 ${
+  const baseCardClasses = `bg-white rounded-xl shadow-sm border transition-all group hover:shadow-md hover:border-slate-300/70 ${
     status && status.color !== "green" ? cardBorderClass : "border-slate-200"
   }`;
 
@@ -197,7 +212,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
       return marginText;
     }
 
-    switch (activeTargetFilter.type) {
+    switch (activeTargetFilter) {
       case "margin":
         return marginText;
       case "revenue":
@@ -223,7 +238,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
     let barWidth = "w-full";
     let statusIcon = null;
 
-    if (!activeTargetFilter || activeTargetFilter.type === "margin") {
+    if (!activeTargetFilter || activeTargetFilter === "margin") {
       if (avgCategoryMargin < targetOverallMargin * 0.85) {
         statusIcon = (
           <ExclamationTriangleIcon className="w-3.5 h-3.5 ml-1 text-red-500" />
@@ -242,7 +257,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
       }
     } else {
       statusIcon = status?.icon;
-      switch (activeTargetFilter.type) {
+      switch (activeTargetFilter) {
         case "revenue":
           barWidth =
             totalRevenue < 100000
@@ -274,7 +289,6 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
 
     switch (metricViewStyle) {
       case "miniBullet":
-      case "statusBar":
         return (
           <div className="mt-1.5">
             <div
@@ -286,6 +300,21 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
               <div
                 className={`h-full rounded-full ${barFillClass} ${barWidth}`}
               ></div>
+            </div>
+          </div>
+        );
+      case "statusBar":
+        return (
+          <div className="mt-1.5">
+            <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${barFillClass} ${barWidth}`}
+              ></div>
+            </div>
+            <div
+              className={`text-xs font-semibold flex items-center mt-1 ${marginColorClassText}`}
+            >
+              {renderMetricValue()} {statusIcon}
             </div>
           </div>
         );
@@ -302,237 +331,164 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
     }
   };
 
-  if (displayMode === "list") {
-    return (
-      <div
-        className={`${baseCardClasses} p-3.5 flex items-center space-x-4 transform hover:-translate-y-0.5 duration-150 ease-out relative`}
-        onClick={() => onSelectCategory(category.id)}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="flex-shrink-0">
-          {category.plannedStyles[0]?.imageUrl ? (
-            <img
-              src={category.plannedStyles[0].imageUrl}
-              alt={category.name}
-              className="w-16 h-16 object-cover rounded-lg shadow-sm"
-            />
-          ) : (
-            <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
-              <CollectionIcon className="w-6 h-6 text-slate-400" />
-            </div>
-          )}
-        </div>
-        <div className="flex-grow min-w-0">
-          <div className="flex justify-between items-start">
-            <h4
-              className="text-sm font-semibold text-sky-700 group-hover:text-sky-600 transition-colors cursor-pointer truncate max-w-[70%]"
-              title={category.name}
-            >
-              {category.name}
-            </h4>
-            <div className="flex items-center space-x-1 flex-shrink-0">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddNewStyle(category.id);
-                }}
-                className="text-slate-400 hover:text-sky-600 p-1.5 rounded-full hover:bg-sky-100 transition-all duration-150 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                title="Add new style"
-              >
-                <PlusIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all duration-150 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                title="More options"
-              >
-                <EllipsisVerticalIcon className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div className="text-xs text-slate-500 mt-0.5">
-            {season} ({category.plannedStyles.length} styles)
-          </div>
-          {category.plannedStyles.length > 0 && renderMarginMetric()}
-        </div>
-        {status && (
-          <div
-            className={`absolute bottom-3.5 right-3.5 text-[11px] font-medium inline-flex items-center py-1 px-2.5 rounded-md shadow-md border transition-all duration-150
-              ${
-                status.color === "red"
-                  ? "bg-red-50 text-red-700 border-red-200"
-                  : status.color === "amber"
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
-              }`}
-          >
-            {status.icon}
-            <span className="font-semibold tracking-wide ml-1">
-              {status.message}
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  }
+  const categoryStatus =
+    category.plmStatus || calculateCategoryStatus(category);
 
-  return (
-    <div
-      className={`bg-white rounded-xl border-2 border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer aspect-square flex flex-col overflow-hidden`}
-      onClick={() => onSelectCategory(category.id)}
-      role="button"
-      tabIndex={0}
-    >
-      {/* Image grid container: flex-1 to take space, min-h-0 to allow shrinking, overflow-hidden to clip, p-3 for padding */}
-      <div className="p-3 flex-1 min-h-0 overflow-hidden">
-        {/* Grid fills this padded container */}
-        <div className="grid grid-cols-3 gap-1.5 h-full">
-          {/* First column - Large image (2/3 width, full height) */}
-          <div className="col-span-2 h-full overflow-hidden rounded-md">
-            {category.plannedStyles[0] ? (
-              category.plannedStyles[0].status ===
-              PlannedStyleStatus.PLACEHOLDER ? (
-                <div className="bg-slate-50 rounded-md h-full flex flex-col items-center justify-center text-center p-2 border-2 border-dashed border-slate-200 hover:border-sky-200 transition-colors">
-                  <div className="w-10 h-10 mb-1 rounded-full bg-slate-100 flex items-center justify-center">
-                    <CollectionIcon className="w-8 h-8 text-slate-400" />
-                  </div>
-                  <span className="text-xs font-medium text-slate-600 line-clamp-2 text-center">
-                    {category.plannedStyles[0].name}
-                  </span>
-                </div>
-              ) : (
-                <div className="rounded-md overflow-hidden bg-slate-100 h-full">
-                  <img
-                    src={category.plannedStyles[0].imageUrl || ""}
-                    alt={category.plannedStyles[0].name}
-                    className="w-full h-full object-cover aspect-square"
+  const handleCardClick = () => {
+    onSelectCategory(category);
+  };
+
+  const handleAddNewStyleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddNewStyle(category);
+  };
+
+  const handleStatusChange = (newStatus: PLMStatusStage) => {
+    onStatusChange(category, newStatus);
+  };
+
+  const renderGridDisplay = () => {
+    const styles = category.plannedStyles;
+    const heroStyle = styles[0];
+    const secondaryStyle1 = styles[1];
+    const secondaryStyle2 = styles[2];
+    const hasMoreStyles = styles.length > 3;
+    const remainingStylesCount = styles.length - 3;
+
+    return (
+      <div className={`${baseCardClasses}`}>
+        <div
+          className="flex flex-col h-full cursor-pointer"
+          onClick={handleCardClick}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between p-4">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-800">
+                {category.name}
+              </h3>
+              <p className="text-sm text-gray-500">{styles.length} styles</p>
+            </div>
+            <StatusBadge
+              status={categoryStatus}
+              userRole={userRole}
+              onStatusChange={handleStatusChange}
+              interactive
+            />
+          </div>
+
+          {/* Image Grid */}
+          <div className="flex-1 px-4">
+            {styles.length > 0 ? (
+              <div className="grid grid-cols-3 grid-rows-2 gap-2 aspect-[4/3]">
+                {/* Hero Image */}
+                <div className="col-span-2 row-span-2 relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+                  <ProductImagePlaceholder
+                    productName={heroStyle.name}
+                    imageUrl={heroStyle.imageUrl}
                   />
                 </div>
-              )
+
+                {/* Secondary Image 1 */}
+                <div className="col-span-1 row-span-1 relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+                  {secondaryStyle1 ? (
+                    <ProductImagePlaceholder
+                      productName={secondaryStyle1.name}
+                      imageUrl={secondaryStyle1.imageUrl}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-50 border rounded-lg"></div>
+                  )}
+                </div>
+
+                {/* Secondary Image 2 */}
+                <div className="col-span-1 row-span-1 relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+                  {secondaryStyle2 ? (
+                    <>
+                      <ProductImagePlaceholder
+                        productName={secondaryStyle2.name}
+                        imageUrl={secondaryStyle2.imageUrl}
+                      />
+                      {hasMoreStyles && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white text-lg font-bold">
+                            +{remainingStylesCount}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full bg-gray-50 border rounded-lg"></div>
+                  )}
+                </div>
+              </div>
             ) : (
-              <div className="bg-slate-100 rounded-md border border-slate-200 flex items-center justify-center h-full">
-                <CollectionIcon className="w-10 h-10 text-slate-300" />
+              <div
+                className="flex flex-col items-center justify-center w-full h-full aspect-[4/3] bg-gray-50 border-2 border-dashed rounded-lg text-gray-400 hover:bg-gray-100/50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNewStyle(category);
+                }}
+              >
+                <CollectionIcon className="w-10 h-10" />
+                <p className="mt-2 text-sm font-medium">Add Styles</p>
               </div>
             )}
           </div>
 
-          {/* Second column - Two stacked smaller images (1/3 width, full height) */}
-          <div className="flex flex-col gap-1.5 h-full">
-            {/* Top small image */}
-            <div className="flex-1 overflow-hidden rounded-md">
-              {category.plannedStyles[1] ? (
-                category.plannedStyles[1].status ===
-                PlannedStyleStatus.PLACEHOLDER ? (
-                  <div className="bg-slate-50 rounded-md h-full flex flex-col items-center justify-center text-center p-1 border-2 border-dashed border-slate-200 hover:border-sky-200 transition-colors">
-                    <div className="w-5 h-5 mb-0.5 rounded-full bg-slate-100 flex items-center justify-center">
-                      <CollectionIcon className="w-4 h-4 text-slate-400" />
-                    </div>
-                    <span className="text-xs font-medium text-slate-600 line-clamp-1 text-center">
-                      {category.plannedStyles[1].name}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="rounded-md overflow-hidden bg-slate-100 h-full">
-                    <img
-                      src={category.plannedStyles[1].imageUrl || ""}
-                      alt={category.plannedStyles[1].name}
-                      className="w-full h-full object-cover aspect-square"
-                    />
-                  </div>
-                )
-              ) : (
-                <div className="bg-slate-100 rounded-md border border-slate-200 flex items-center justify-center h-full">
-                  <CollectionIcon className="w-5 h-5 text-slate-300" />
-                </div>
-              )}
-            </div>
-
-            {/* Bottom small image */}
-            <div className="flex-1 overflow-hidden rounded-md">
-              {category.plannedStyles[2] ? (
-                category.plannedStyles[2].status ===
-                PlannedStyleStatus.PLACEHOLDER ? (
-                  <div className="bg-slate-50 rounded-md h-full flex flex-col items-center justify-center text-center p-1 border-2 border-dashed border-slate-200 hover:border-sky-200 transition-colors">
-                    <div className="w-5 h-5 mb-0.5 rounded-full bg-slate-100 flex items-center justify-center">
-                      <CollectionIcon className="w-4 h-4 text-slate-400" />
-                    </div>
-                    <span className="text-xs font-medium text-slate-600 line-clamp-1 text-center">
-                      {category.plannedStyles[2].name}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="rounded-md overflow-hidden bg-slate-100 h-full">
-                    <img
-                      src={category.plannedStyles[2].imageUrl || ""}
-                      alt={category.plannedStyles[2].name}
-                      className="w-full h-full object-cover aspect-square"
-                    />
-                  </div>
-                )
-              ) : (
-                <div className="bg-slate-100 rounded-md border border-slate-200 flex items-center justify-center h-full">
-                  <CollectionIcon className="w-5 h-5 text-slate-300" />
-                </div>
-              )}
+          {/* Footer Metrics */}
+          <div className="p-4">
+            {renderMarginMetric()}
+            <div className="mt-2">
+              <TagListDisplay
+                tagIds={styles.flatMap((s) => s.tags || []).slice(0, 3) || []}
+              />
             </div>
           </div>
         </div>
       </div>
+    );
+  };
 
-      {/* Fixed height metadata area with title */}
-      <div
-        className="bg-slate-50/50 border-t border-slate-100 p-3 flex-shrink-0"
-        style={{ height: "90px" }}
-      >
-        <div className="flex justify-between items-start h-full">
-          {/* Left side - Title, Season and metrics */}
-          <div className="flex flex-col justify-between h-full min-w-0 flex-1">
-            <div>
-              <h4
-                className="text-base font-semibold text-slate-800 group-hover:text-sky-700 transition-colors truncate"
-                title={category.name}
-              >
-                {category.name}
-              </h4>
-              <div className="text-xs text-slate-600 truncate mt-0.5">
-                {season}
-              </div>
-            </div>
-            {/* Metrics */}
-            {category.plannedStyles.length > 0 && (
-              <div className="text-xs">{renderMarginMetric()}</div>
-            )}
-          </div>
-
-          {/* Right side - Style count and status */}
-          <div className="flex flex-col justify-between items-end h-full text-right ml-2">
-            <div className="text-sm text-slate-600 flex-shrink-0">
-              {category.plannedStyles.length} styles
-            </div>
-            {/* Status indicator at bottom right */}
-            {status && (
-              <div
-                className={`text-xs font-medium inline-flex items-center py-1 px-2.5 rounded-md shadow-md border transition-all duration-150
-                  ${
-                    status.color === "red"
-                      ? "bg-red-50 text-red-700 border-red-200"
-                      : status.color === "amber"
-                      ? "bg-amber-50 text-amber-700 border-amber-200"
-                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  }`}
-              >
-                {status.icon}
-                <span className="font-semibold tracking-wide ml-1 truncate">
-                  {status.message}
-                </span>
-              </div>
-            )}
-          </div>
+  const renderListDisplay = () => (
+    <div
+      className={`p-4 rounded-lg flex items-center justify-between cursor-pointer ${baseCardClasses}`}
+      onClick={handleCardClick}
+    >
+      <div className="flex items-center gap-4">
+        <StatusBadge
+          status={categoryStatus}
+          userRole={userRole}
+          onStatusChange={handleStatusChange}
+          interactive
+          iconOnly
+        />
+        <div>
+          <h3 className="font-semibold text-gray-800">{category.name}</h3>
+          <p className="text-sm text-gray-500">
+            {category.plannedStyles.length} styles
+          </p>
         </div>
+      </div>
+      <div className="flex items-center gap-6">
+        <div className="w-48">{renderMarginMetric()}</div>
+        <div className="w-40">
+          <TagListDisplay
+            tagIds={
+              category.plannedStyles.flatMap((s) => s.tags || []).slice(0, 3) ||
+              []
+            }
+          />
+        </div>
+        <EllipsisVerticalIcon className="w-5 h-5 text-gray-400" />
       </div>
     </div>
   );
+
+  if (displayMode === "list") {
+    return renderListDisplay();
+  }
+  return renderGridDisplay();
 };
 
 export default ProductLineCategoryCard;

@@ -23,6 +23,7 @@ import {
   FileText,
   CaretDown,
   CaretLeft,
+  CaretUp,
   PencilSimple,
   Eye,
   X,
@@ -39,6 +40,10 @@ import {
   PlusCircle,
   SquaresFour as Squares2X2,
   Warning,
+  TrendUp,
+  DownloadSimple,
+  UploadSimple,
+  Trash,
 } from "@phosphor-icons/react";
 
 // Export all icons with their application-specific names
@@ -66,6 +71,7 @@ export const MinusIcon = Minus;
 export const DocumentTextIcon = FileText;
 export const ChevronDownIcon = CaretDown;
 export const ChevronLeftIcon = CaretLeft;
+export const ChevronUpIcon = CaretUp;
 export const PencilIcon = PencilSimple;
 export const EyeIcon = Eye;
 export const XMarkIcon = X;
@@ -82,6 +88,11 @@ export const EllipsisVerticalIcon = DotsThreeVertical;
 export const RectangleGroupIcon = RectangleGroup;
 export const PlusCircleIcon = PlusCircle;
 export const Squares2X2Icon = Squares2X2;
+export const ChartLineUpIcon = TrendUp;
+export const DownloadSimpleIcon = DownloadSimple;
+export const UploadSimpleIcon = UploadSimple;
+export const PackageIcon = Package;
+export const TrashIcon = Trash;
 
 export const TagIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg

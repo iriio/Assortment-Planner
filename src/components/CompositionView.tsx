@@ -8,6 +8,7 @@ import {
   XMarkIcon,
 } from "./icons";
 import Modal from "./Modal";
+import TagChip from "./TagChip";
 
 interface CompositionViewProps {
   linePlan: LinePlan;
@@ -475,17 +476,15 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                   </span>
                 ))}
 
-                {/* Include Tag Filters */}
+                {/* Tag Filters */}
                 {filters.tags.map((tagId) => {
                   const tag = productTagLibrary.find((t) => t.id === tagId);
                   return tag ? (
-                    <span
+                    <div
                       key={`tag-${tagId}`}
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium border border-opacity-50 ${getTagColorClasses(
-                        tag.color
-                      )}`}
+                      className="relative inline-flex items-center"
                     >
-                      <span>{tag.name}</span>
+                      <TagChip tag={tag} size="sm" />
                       <button
                         onClick={() => {
                           const newTags = filters.tags.filter(
@@ -494,11 +493,12 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                           onFiltersChange &&
                             onFiltersChange({ ...filters, tags: newTags });
                         }}
-                        className="hover:bg-opacity-20 hover:bg-black p-1"
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs transition-colors"
+                        title="Remove filter"
                       >
-                        <XMarkIcon className="w-3 h-3" />
+                        <XMarkIcon className="w-2.5 h-2.5" />
                       </button>
-                    </span>
+                    </div>
                   ) : null;
                 })}
 
@@ -508,7 +508,7 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                   return tag ? (
                     <span
                       key={`exclude-tag-${tagId}`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100/80 text-red-800 text-sm font-medium border border-red-200/50"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100/80 text-red-800 text-sm font-medium border border-red-200/50 rounded-md"
                     >
                       <span>Exclude: {tag.name}</span>
                       <button
@@ -522,7 +522,7 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                               excludeTags: newTags,
                             });
                         }}
-                        className="hover:bg-red-200/80 p-1"
+                        className="hover:bg-red-200/80 p-1 rounded"
                       >
                         <XMarkIcon className="w-3 h-3" />
                       </button>
@@ -961,14 +961,11 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                                       (t) => t.id === tagId
                                     );
                                     return tag ? (
-                                      <span
+                                      <TagChip
                                         key={tagId}
-                                        className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium border ${getTagColorClasses(
-                                          tag.color
-                                        )}`}
-                                      >
-                                        {tag.name}
-                                      </span>
+                                        tag={tag}
+                                        size="xs"
+                                      />
                                     ) : null;
                                   })}
                                   {product.tags.length > 2 && (
@@ -1115,7 +1112,7 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                           className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                         />
                         <span
-                          className={`text-xs px-2 py-1 rounded border ${getTagColorClasses(
+                          className={`text-xs px-2 py-1 rounded-md border ${getTagColorClasses(
                             tag.color
                           )}`}
                         >
@@ -1159,11 +1156,7 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                           }}
                           className="rounded border-slate-300 text-red-600 focus:ring-red-500"
                         />
-                        <span
-                          className={`text-xs px-2 py-1 rounded border ${getTagColorClasses(
-                            tag.color
-                          )}`}
-                        >
+                        <span className="text-xs px-2 py-1 rounded-md border bg-slate-50 text-slate-700 border-slate-200">
                           {tag.name}
                         </span>
                       </label>
