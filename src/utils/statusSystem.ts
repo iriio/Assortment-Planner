@@ -1,10 +1,4 @@
-import {
-  PLMStatusStage,
-  UserRole,
-  StatusStageDefinition,
-  LinePlan,
-  LinePlanCategory,
-} from "../types";
+import { PLMStatusStage, LinePlan, LinePlanCategory } from "../types";
 
 interface StatusDefinition {
   label: string;
@@ -130,22 +124,17 @@ const calculateRollUpStatus = (statuses: PLMStatusStage[]): PLMStatusStage => {
 // Permission System
 export const canUserTransitionStatus = (
   currentStatus: PLMStatusStage,
-  targetStatus: PLMStatusStage,
-  userRole: UserRole
+  targetStatus: PLMStatusStage
 ): boolean => {
-  const availableTransitions = getAvailableStatusTransitions(
-    currentStatus,
-    userRole
-  );
+  const availableTransitions = getAvailableStatusTransitions(currentStatus);
   return availableTransitions.includes(targetStatus);
 };
 
 // Get available next statuses for a user
 export const getAvailableStatusTransitions = (
-  currentStatus: PLMStatusStage,
-  userRole: UserRole
+  currentStatus: PLMStatusStage
 ): PLMStatusStage[] => {
-  // Define allowed transitions based on current status and user role
+  // Define allowed transitions based on current status
   const transitions: Record<PLMStatusStage, PLMStatusStage[]> = {
     [PLMStatusStage.DRAFT]: [PLMStatusStage.BRIEFING],
     [PLMStatusStage.BRIEFING]: [PLMStatusStage.PLANNING],

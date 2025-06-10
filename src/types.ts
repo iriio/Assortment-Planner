@@ -37,17 +37,9 @@ export enum PLMStatusStage {
   LAUNCHED = "launched",
 }
 
-export enum UserRole {
-  MERCHANT = "merchant",
-  DESIGNER = "designer",
-  PD = "pd",
-  SYSTEM = "system",
-}
-
 export interface StatusStageDefinition {
   id: PLMStatusStage;
   label: string;
-  primaryOwner: UserRole;
   description: string;
   colorClass: string;
   bgColorClass: string;

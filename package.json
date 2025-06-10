@@ -11,6 +11,7 @@
     "deploy": "gh-pages -d dist --branch gh-pages --repo https://github.com/iriio/Assortment-Planner.git --message 'deploy'"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@heroicons/react": "^2.2.0",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -37,6 +38,7 @@
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "lucide-react": "^0.513.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

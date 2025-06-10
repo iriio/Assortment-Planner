@@ -1,68 +1,22 @@
-/**
- * PROGRAM OVERVIEW PAGE - Main dashboard for managing assortment planning programs
- *
- * LAYOUT STRUCTURE:
- * ┌─────────────────────────────────────────────────────────────┐
- * │                    Main Container (flex)                    │
- * ├──────────────────┬──────────────────────────────────────────┤
- * │   SIDEBAR        │           MAIN CONTENT AREA             │
- * │   (collapsible)  │   ┌──────────────────────────────────┐   │
- * │                  │   │      HEADER BAR (sticky)        │   │
- * │  - Program List  │   │  - Breadcrumbs                  │   │
- * │  - New Program   │   │  - Action Buttons               │   │
- * │  - Status        │   └──────────────────────────────────┤   │
- * │                  │   │                                  │   │
- * │                  │   │        CONTENT AREA              │   │
- * │                  │   │  ┌─────────────┬──────────────┐  │   │
- * │                  │   │  │  TARGETS    │   PROJECTS   │  │   │
- * │                  │   │  │  PANEL      │   GRID/LIST  │  │   │
- * │                  │   │  │ (resizable) │              │  │   │
- * │                  │   │  │             │              │  │   │
- * │                  │   │  └─────────────┴──────────────┘  │   │
- * │                  │   └──────────────────────────────────┘   │
- * └──────────────────┴──────────────────────────────────────────┘
- *
- * VIEW MODES:
- * - overview: Shows all project categories in grid/list
- * - category: Shows detailed view of single category with styles
- * - composition: Shows program composition analysis
- */
-
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   LinePlan,
-  ProductCatalogueItem,
   GlobalMetricViewOption,
   CategoryMetricViewOption,
-  PlannedStyle,
   PLMStatusStage,
-  UserRole,
   LinePlanCategory,
   ProjectCreationInput,
 } from "../types";
-import { productCatalogueData as allCatalogueItems } from "../data";
+import { LayoutViewOption } from "../types/layout";
 import {
-  ChevronRightIcon,
-  ChevronLeftIcon,
-  ChevronUpIcon,
-  MinusIcon,
   CurrencyDollarIcon,
   ScaleIcon,
   PercentIcon,
-  ChartBarIcon as ChartBarIconPhosphor,
-  LayoutDashboardIcon as LayoutDashboardIconPhosphor,
-  TableCellsIcon as TableCellsIconPhosphor,
-  ViewColumnsIcon as ViewColumnsIconPhosphor,
-  PlusIcon as PlusIconPhosphor,
   CollectionIcon,
-  XMarkIcon as XIcon,
-  ChartLineUpIcon,
-  DownloadSimpleIcon,
-  UploadSimpleIcon,
   PackageIcon,
   ChevronRightIcon as ChevronRight,
-} from "../components/icons";
+} from "../components";
 
 // Shadcn UI Imports
 import { Button } from "@/components/ui/button";
@@ -76,22 +30,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-  SidebarRail,
-} from "@/components/ui/sidebar";
-import {
   LayoutDashboard as LayoutDashboardIcon,
   List as ListIcon,
   Columns as ColumnsIcon,
@@ -99,45 +37,30 @@ import {
   BarChart2 as BarChart2Icon,
   Folder,
   Settings,
-  Calendar,
+  Menu,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
-import Modal from "../components/Modal";
-import { MetricDisplayCard } from "../components/MetricDisplayCard";
-import CatalogueModal from "../components/CatalogueModal";
-import ProductLineCategoryCard from "../components/ProductLineCategoryCard";
-import AddCategoryModal from "../components/AddCategoryModal";
-import EditProgramTargetsModal from "../components/EditProgramTargetsModal";
-import CategoryTargetsModal from "../components/CategoryTargetsModal";
-import AddOptionsPopover from "../components/AddOptionsPopover";
-import CategoryDetailView from "../components/CategoryDetailView";
-import CompositionView, { FilterState } from "../components/CompositionView";
-import StatusFilter from "../components/StatusFilter";
 import {
-  calculateProgramStatus,
-  calculateCategoryStatus,
-} from "../utils/statusSystem";
-import StatusBadge from "../components/StatusBadge";
+  MetricBulletCard,
+  ProductLineCategoryCard,
+  AddCategoryModal,
+  EditProgramTargetsModal,
+  CategoryTargetsModal,
+  AddOptionsPopover,
+  FilterState,
+} from "../components";
+import { CompactListView } from "../components/views/CompactListView";
+import { ProgramSidebar } from "../components/ProgramSidebar";
 import {
   loadUIPreferences,
   saveUIPreference,
-  UIPreferences,
+  saveUIPreferences,
+  saveLinePlans,
+  saveCurrentLinePlanId,
 } from "../utils/localStorage";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Progress } from "../../components/ui/progress";
-import {
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip as ChartTooltip,
-} from "recharts";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -146,8 +69,17 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ProgramWideView } from "../components/views/ProgramWideView";
+import { Separator } from "@/components/ui/separator";
 
-type LayoutViewOption = "standard" | "compactList" | "wideView";
 type ViewMode = "overview" | "category" | "composition";
 
 const LAYOUT_OPTIONS: {
@@ -155,8 +87,8 @@ const LAYOUT_OPTIONS: {
   label: string;
   icon: React.FC<{ className?: string }>;
 }[] = [
-  { value: "standard", label: "Standard Dashboard", icon: LayoutDashboardIcon },
   { value: "compactList", label: "Compact List", icon: ListIcon },
+  { value: "standard", label: "Standard Dashboard", icon: LayoutDashboardIcon },
   { value: "wideView", label: "Wide View (Horizontal)", icon: ColumnsIcon },
 ];
 
@@ -164,12 +96,6 @@ type ActiveTargetFilterType = "revenue" | "margin" | "sellin" | "sellthrough";
 interface ActiveTargetFilter {
   type: ActiveTargetFilterType;
   displayName: string;
-}
-
-interface ConfirmAddCarryoverModalState {
-  isOpen: boolean;
-  itemToAdd: ProductCatalogueItem | null;
-  selectedCategoryId: string;
 }
 
 interface ProjectFormInput {
@@ -198,7 +124,6 @@ interface ProgramOverviewPageProps {
     sellThrough: number,
     revenue: number
   ) => void;
-  onPullInStyle: (categoryId: string, style: ProductCatalogueItem) => void;
   onAddCategory: () => void;
   globalMetricView: GlobalMetricViewOption;
   setGlobalMetricView: (view: GlobalMetricViewOption) => void;
@@ -217,7 +142,6 @@ const ProgramOverviewPage = ({
   currentLinePlan,
   setCurrentLinePlanId,
   onUpdateTargets,
-  onPullInStyle,
   onAddCategory,
   categoryMetricView,
   setLinePlans,
@@ -230,14 +154,13 @@ const ProgramOverviewPage = ({
   const uiPreferences = useMemo(() => loadUIPreferences(), []);
 
   // LAYOUT STATE: Current view layout (grid, list, etc.)
-  const [currentLayout, setCurrentLayout] = useState<LayoutViewOption>(
-    () => uiPreferences.currentLayout || "standard"
-  );
-
-  // SIDEBAR STATE: Manage sidebar open/close state with localStorage persistence
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(
-    () => uiPreferences.sidebarCollapsed !== true
-  );
+  const [currentLayout, setCurrentLayout] = useState<LayoutViewOption>(() => {
+    const savedLayout = uiPreferences.currentLayout;
+    return savedLayout &&
+      LAYOUT_OPTIONS.some((opt) => opt.value === savedLayout)
+      ? savedLayout
+      : "compactList";
+  });
 
   // FORM STATE: Program creation form visibility
   const [showCreateProgramForm, setShowCreateProgramForm] = useState<boolean>(
@@ -252,15 +175,11 @@ const ProgramOverviewPage = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null
   );
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(
-    null
-  );
 
   // VIEW STATE: Current view mode (overview/category/composition)
   const [viewMode, setViewMode] = useState<ViewMode>("overview");
 
   // MODAL STATES: Various modal dialog visibility states
-  const [isCatalogueModalOpen, setIsCatalogueModalOpen] = useState(false);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [isEditTargetsModalOpen, setIsEditTargetsModalOpen] = useState(false);
   const [isEditCategoryTargetsModalOpen, setIsEditCategoryTargetsModalOpen] =
@@ -268,14 +187,6 @@ const ProgramOverviewPage = ({
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null
   );
-
-  // CARRYOVER MODAL STATE: State for adding carryover styles from catalogue
-  const [confirmAddModalState, setConfirmAddModalState] =
-    useState<ConfirmAddCarryoverModalState>({
-      isOpen: false,
-      itemToAdd: null,
-      selectedCategoryId: currentLinePlan?.categories[0]?.id || "",
-    });
 
   // POPOVER STATE: Add options dropdown menu
   const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false);
@@ -296,19 +207,6 @@ const ProgramOverviewPage = ({
         status: [],
       }
   );
-
-  // USER STATE: Current user role and status filters
-  const [userRole, _setUserRole] = useState<UserRole>(UserRole.MERCHANT);
-  const [statusFilters, setStatusFilters] = useState<PLMStatusStage[]>([]);
-
-  // RESIZABLE PANEL STATE: Targets panel width with drag-to-resize functionality
-  const [targetsPanelWidth, setTargetsPanelWidth] = useState(
-    () => uiPreferences.targetsPanelWidth || 320
-  ); // Default width in pixels
-  const [isResizing, setIsResizing] = useState(false);
-  const isResizingRef = React.useRef(false);
-  const MIN_PANEL_WIDTH = 280;
-  const MAX_PANEL_WIDTH = 500;
 
   // FORM STATE: Program creation form fields
   const [programName, setProgramName] = useState("");
@@ -335,6 +233,240 @@ const ProgramOverviewPage = ({
     { ...initialProjectFormState },
   ]);
 
+  // Add state at the top-level of the component
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isMetricsPanelCollapsed, setIsMetricsPanelCollapsed] =
+    React.useState(false);
+
+  const overallProjectedRevenue = useMemo(() => {
+    if (!currentLinePlan?.categories) return 0;
+    return (
+      (currentLinePlan.categories || []).reduce(
+        (sum, cat) =>
+          sum +
+          (cat.plannedStyles || []).reduce(
+            (styleSum, style) =>
+              styleSum +
+              style.sellingPrice *
+                (cat.targetVolume / ((cat.plannedStyles || []).length || 1)),
+            0
+          ),
+        0
+      ) / 1000000
+    );
+  }, [currentLinePlan?.categories]);
+
+  const overallAchievedMargin = useMemo(() => {
+    if (!currentLinePlan?.categories) return 0;
+    let totalRevenue = 0;
+    let totalCost = 0;
+    (currentLinePlan.categories || []).forEach((cat) => {
+      (cat.plannedStyles || []).forEach((style) => {
+        const styleVolume =
+          cat.targetVolume / ((cat.plannedStyles || []).length || 1);
+        totalRevenue += style.sellingPrice * styleVolume;
+        totalCost += style.costPrice * styleVolume;
+      });
+    });
+    return totalRevenue === 0 ? 0 : (totalRevenue - totalCost) / totalRevenue;
+  }, [currentLinePlan?.categories]);
+
+  const handleBackToOverview = () => {
+    setSelectedCategoryId(null);
+
+    setViewMode("overview");
+  };
+
+  const handleShowComposition = () => {
+    setViewMode("composition");
+    setSelectedCategoryId(null);
+  };
+
+  const openCatalogueModal = () => setIsAddCategoryModalOpen(true);
+
+  const handleAddPlaceholder = (categoryId: string) => {
+    navigate(`/category/${categoryId}?action=add&type=placeholder`);
+  };
+
+  const renderTargetsSectionContent = () => {
+    // Calculations for metrics
+    const sellInProjected = (currentLinePlan?.categories || []).reduce(
+      (sum, cat) => {
+        const stylesCount = (cat.plannedStyles || []).length || 1;
+        const volumePerStyle = cat.targetVolume / stylesCount;
+        return (
+          sum +
+          (cat.plannedStyles || []).reduce(
+            (styleSum, style) =>
+              styleSum + (style.projectedSellIn || volumePerStyle),
+            0
+          )
+        );
+      },
+      0
+    );
+    const sellInTarget = (currentLinePlan?.categories || []).reduce(
+      (sum, cat) => sum + cat.targetVolume,
+      0
+    );
+    const sellThroughProjected = (() => {
+      if (!currentLinePlan?.categories) return 0;
+      let totalProjectedSellThroughUnits = 0;
+      let totalBaseUnits = 0;
+      (currentLinePlan.categories || []).forEach((cat) => {
+        const stylesCount = (cat.plannedStyles || []).length || 1;
+        const volumePerStyle = cat.targetVolume / stylesCount;
+        (cat.plannedStyles || []).forEach((style) => {
+          const baseVolume = style.projectedSellIn || volumePerStyle;
+          totalBaseUnits += baseVolume;
+          totalProjectedSellThroughUnits +=
+            (style.projectedSellThrough ?? 0.8) * baseVolume;
+        });
+      });
+      return totalBaseUnits > 0
+        ? (totalProjectedSellThroughUnits / totalBaseUnits) * 100
+        : 0;
+    })();
+
+    return (
+      <div className="flex flex-col h-full">
+        <div className="p-3 space-y-3">
+          <MetricBulletCard
+            title="Revenue"
+            target={(currentLinePlan?.targetOverallRevenue ?? 0) / 1000000}
+            current={overallProjectedRevenue}
+            unit="$M"
+            icon={<CurrencyDollarIcon className="w-4 h-4" />}
+          />
+          <MetricBulletCard
+            title="Margin"
+            target={(currentLinePlan?.targetOverallMargin ?? 0) * 100}
+            current={overallAchievedMargin * 100}
+            unit="%"
+            icon={<ScaleIcon className="w-4 h-4" />}
+          />
+          <MetricBulletCard
+            title="Sell-In"
+            target={sellInTarget}
+            current={sellInProjected}
+            unit="units"
+            icon={<PackageIcon className="w-4 h-4" />}
+          />
+          <MetricBulletCard
+            title="Sell-Through"
+            target={(currentLinePlan?.targetOverallSellThrough ?? 0) * 100}
+            current={sellThroughProjected}
+            unit="%"
+            icon={<PercentIcon className="w-4 h-4" />}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderProductLinesSectionContent = (layout: LayoutViewOption) => {
+    if (!currentLinePlan) return null;
+
+    if (layout === "compactList") {
+      return (
+        <CompactListView
+          categories={currentLinePlan.categories}
+          selectedCategoryId={selectedCategoryId}
+          onSelectCategory={handleSelectCategory}
+          onSelectStyle={handleSelectStyle}
+          activeTargetFilter={activeTargetFilter?.type || null}
+          targetOverallMargin={currentLinePlan.targetOverallMargin}
+          onStatusChange={handleCategoryStatusChange}
+          onBackToCategories={handleBackToOverview}
+        />
+      );
+    }
+
+    if (layout === "wideView") {
+      return (
+        <ProgramWideView
+          categories={currentLinePlan.categories}
+          selectedCategoryId={selectedCategoryId}
+          onSelectCategory={handleSelectCategory}
+          onSelectStyle={handleSelectStyle}
+          activeTargetFilter={activeTargetFilter?.type || null}
+          targetOverallMargin={currentLinePlan.targetOverallMargin}
+          onStatusChange={handleCategoryStatusChange}
+          onBackToCategories={handleBackToOverview}
+        />
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start auto-rows-auto">
+        {(currentLinePlan.categories || []).map((category) => (
+          <ProductLineCategoryCard
+            key={category.id}
+            category={category}
+            onSelectCategory={handleSelectCategory}
+            onAddNewStyle={handleAddNewStyleToCategory}
+            activeTargetFilter={activeTargetFilter?.type || null}
+            targetOverallMargin={currentLinePlan?.targetOverallMargin ?? 0}
+            displayMode="grid"
+            metricViewStyle={categoryMetricView}
+            onStatusChange={handleCategoryStatusChange}
+          />
+        ))}
+        {(currentLinePlan?.categories || []).length === 0 && (
+          <div className="md:col-span-full text-center py-16 px-6">
+            <CollectionIcon className="w-16 h-16 text-muted mx-auto mb-4" />
+            <h3 className="text-md font-semibold text-card-foreground">
+              This Plan is Empty
+            </h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Add categories (projects) and styles to start planning your
+              assortment.
+            </p>
+            <Button
+              onClick={() => setIsAddCategoryModalOpen(true)}
+              className="mt-4"
+            >
+              Add Category
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleSelectCategory = (category: LinePlanCategory) => {
+    setSelectedCategoryId(category.id);
+    if (currentLayout !== "compactList") {
+      setViewMode("category");
+    }
+  };
+
+  const handleSelectStyle = () => {
+    // Style selection logic if needed
+  };
+
+  const handleAddNewStyleToCategory = (category: LinePlanCategory) => {
+    navigate(`/category/${category.id}?action=add`);
+  };
+
+  const handleCategoryStatusChange = (
+    category: LinePlanCategory,
+    newStatus: PLMStatusStage
+  ) => {
+    setLinePlans((prevPlans: LinePlan[]) =>
+      prevPlans.map((plan: LinePlan) =>
+        plan.id === currentLinePlan?.id
+          ? {
+              ...plan,
+              categories: plan.categories.map((cat) =>
+                cat.id === category.id ? { ...cat, plmStatus: newStatus } : cat
+              ),
+            }
+          : plan
+      )
+    );
+  };
+
   /**
    * UTILITY FUNCTION: Reset all form fields to initial state
    */
@@ -355,15 +487,6 @@ const ProgramOverviewPage = ({
   useEffect(() => {
     saveUIPreference("lastActiveFilters", filters);
   }, [filters]);
-
-  useEffect(() => {
-    saveUIPreference("targetsPanelWidth", targetsPanelWidth);
-  }, [targetsPanelWidth]);
-
-  // Persist sidebar state changes to localStorage
-  useEffect(() => {
-    saveUIPreference("sidebarCollapsed", !sidebarOpen);
-  }, [sidebarOpen]);
 
   const handleProjectDetailChange = (
     index: number,
@@ -523,742 +646,6 @@ const ProgramOverviewPage = ({
     }
   }, [currentLinePlan, linePlans]);
 
-  const handleFiltersChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
-  };
-
-  const handleStatusFiltersChange = (statuses: PLMStatusStage[]) => {
-    setStatusFilters(statuses);
-  };
-
-  const handleTargetFilterClick = (
-    filterType: ActiveTargetFilterType,
-    displayName: string
-  ) => {
-    setActiveTargetFilter((prev) =>
-      prev?.type === filterType ? null : { type: filterType, displayName }
-    );
-  };
-
-  const openCatalogueModal = () => setIsCatalogueModalOpen(true);
-  const closeCatalogueModal = () => setIsCatalogueModalOpen(false);
-
-  const handleSelectItemFromCatalogue = (item: ProductCatalogueItem) => {
-    setConfirmAddModalState({
-      isOpen: true,
-      itemToAdd: item,
-      selectedCategoryId:
-        currentLinePlan?.categories.find((c) => c.name === item.categoryName)
-          ?.id ||
-        currentLinePlan?.categories[0]?.id ||
-        "",
-    });
-  };
-
-  const closeConfirmAddModal = () => {
-    setConfirmAddModalState((prev) => ({
-      ...prev,
-      isOpen: false,
-      itemToAdd: null,
-    }));
-  };
-
-  const handleConfirmAddCarryover = () => {
-    if (
-      confirmAddModalState.itemToAdd &&
-      confirmAddModalState.selectedCategoryId
-    ) {
-      onPullInStyle(
-        confirmAddModalState.selectedCategoryId,
-        confirmAddModalState.itemToAdd
-      );
-    }
-    closeConfirmAddModal();
-  };
-
-  const handleAddNewStyleToCategory = (category: LinePlanCategory) => {
-    navigate(`/category/${category.id}?action=add`);
-  };
-
-  const handleAddPlaceholder = (categoryId: string) => {
-    navigate(`/category/${categoryId}?action=add&type=placeholder`);
-  };
-
-  const overallProjectedRevenue = useMemo(() => {
-    if (!currentLinePlan?.categories) return 0;
-    return (
-      (currentLinePlan.categories || []).reduce(
-        (sum, cat) =>
-          sum +
-          (cat.plannedStyles || []).reduce(
-            (styleSum, style) =>
-              styleSum +
-              style.sellingPrice *
-                (cat.targetVolume / ((cat.plannedStyles || []).length || 1)),
-            0
-          ),
-        0
-      ) / 1000000
-    );
-  }, [currentLinePlan?.categories]);
-
-  const overallAchievedMargin = useMemo(() => {
-    if (!currentLinePlan?.categories) return 0;
-    let totalRevenue = 0;
-    let totalCost = 0;
-    (currentLinePlan.categories || []).forEach((cat) => {
-      (cat.plannedStyles || []).forEach((style) => {
-        const styleVolume =
-          cat.targetVolume / ((cat.plannedStyles || []).length || 1);
-        totalRevenue += style.sellingPrice * styleVolume;
-        totalCost += style.costPrice * styleVolume;
-      });
-    });
-    return totalRevenue === 0 ? 0 : (totalRevenue - totalCost) / totalRevenue;
-  }, [currentLinePlan?.categories]);
-
-  const sortedCategories = useMemo(() => {
-    if (!currentLinePlan?.categories) return [];
-    let categoriesCopy = [...(currentLinePlan.categories || [])];
-
-    if (statusFilters.length > 0) {
-      categoriesCopy = categoriesCopy.filter((cat) => {
-        const categoryStatus = cat.plmStatus || calculateCategoryStatus(cat);
-        return statusFilters.includes(categoryStatus);
-      });
-    }
-
-    if (!activeTargetFilter) return categoriesCopy;
-
-    switch (activeTargetFilter.type) {
-      case "margin":
-        return categoriesCopy.sort((a, b) => {
-          const marginA =
-            (a.plannedStyles || []).length > 0
-              ? (a.plannedStyles || []).reduce(
-                  (s: number, st: PlannedStyle) => s + st.margin,
-                  0
-                ) / (a.plannedStyles || []).length
-              : -1;
-          const marginB =
-            (b.plannedStyles || []).length > 0
-              ? (b.plannedStyles || []).reduce(
-                  (s: number, st: PlannedStyle) => s + st.margin,
-                  0
-                ) / (b.plannedStyles || []).length
-              : -1;
-          return marginB - marginA;
-        });
-      default:
-        return categoriesCopy;
-    }
-  }, [currentLinePlan?.categories, activeTargetFilter, statusFilters]);
-
-  const getLayoutConfig = (
-    layout: LayoutViewOption
-  ): { containerClasses: string; cardDisplayMode: "grid" | "list" } => {
-    switch (layout) {
-      case "standard":
-        return {
-          containerClasses:
-            "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5 items-start auto-rows-auto",
-          cardDisplayMode: "grid",
-        };
-      case "compactList":
-        return {
-          containerClasses: "space-y-3.5 p-5",
-          cardDisplayMode: "list",
-        };
-      case "wideView":
-      default:
-        return {
-          containerClasses:
-            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5 items-start auto-rows-auto",
-          cardDisplayMode: "grid",
-        };
-    }
-  };
-
-  const renderTargetsSectionContent = (
-    layout: LayoutViewOption = "standard"
-  ) => {
-    const isCompact = layout === "compactList";
-    const selectedCategory = selectedCategoryId
-      ? (currentLinePlan?.categories || []).find(
-          (cat) => cat.id === selectedCategoryId
-        )
-      : null;
-
-    // Calculations for metrics
-    const sellInProjected = (currentLinePlan?.categories || []).reduce(
-      (sum, cat) => {
-        const stylesCount = (cat.plannedStyles || []).length || 1;
-        const volumePerStyle = cat.targetVolume / stylesCount;
-        return (
-          sum +
-          (cat.plannedStyles || []).reduce(
-            (styleSum, style) =>
-              styleSum + (style.projectedSellIn || volumePerStyle),
-            0
-          )
-        );
-      },
-      0
-    );
-    const sellInTarget = (currentLinePlan?.categories || []).reduce(
-      (sum, cat) => sum + cat.targetVolume,
-      0
-    );
-    const sellThroughProjected = (() => {
-      if (!currentLinePlan?.categories) return 0;
-      let totalProjectedSellThroughUnits = 0;
-      let totalBaseUnits = 0;
-      (currentLinePlan.categories || []).forEach((cat) => {
-        const stylesCount = (cat.plannedStyles || []).length || 1;
-        const volumePerStyle = cat.targetVolume / stylesCount;
-        (cat.plannedStyles || []).forEach((style) => {
-          const baseVolume = style.projectedSellIn || volumePerStyle;
-          totalBaseUnits += baseVolume;
-          totalProjectedSellThroughUnits +=
-            (style.projectedSellThrough ?? 0.8) * baseVolume;
-        });
-      });
-      return totalBaseUnits > 0
-        ? (totalProjectedSellThroughUnits / totalBaseUnits) * 100
-        : 0;
-    })();
-    const overallProjectedRevenue =
-      (currentLinePlan?.categories || []).reduce(
-        (sum, cat) =>
-          sum +
-          (cat.plannedStyles || []).reduce(
-            (styleSum, style) =>
-              styleSum +
-              style.sellingPrice *
-                (cat.targetVolume / ((cat.plannedStyles || []).length || 1)),
-            0
-          ),
-        0
-      ) / 1000000;
-    const overallAchievedMargin = (() => {
-      if (!currentLinePlan?.categories) return 0;
-      let totalRevenue = 0;
-      let totalCost = 0;
-      (currentLinePlan.categories || []).forEach((cat) => {
-        (cat.plannedStyles || []).forEach((style) => {
-          const styleVolume =
-            cat.targetVolume / ((cat.plannedStyles || []).length || 1);
-          totalRevenue += style.sellingPrice * styleVolume;
-          totalCost += style.costPrice * styleVolume;
-        });
-      });
-      return totalRevenue === 0 ? 0 : (totalRevenue - totalCost) / totalRevenue;
-    })();
-
-    // Metric card data
-    const metricCards = [
-      {
-        key: "revenue",
-        title: "Revenue",
-        projectedValue: overallProjectedRevenue,
-        targetValue: (currentLinePlan?.targetOverallRevenue ?? 0) / 1000000,
-        unit: "$M",
-        icon: <CurrencyDollarIcon className="w-5 h-5" />,
-        higherIsBetter: true,
-        displayValueFormatter: (v: number) => `$${v.toFixed(1)}M`,
-      },
-      {
-        key: "margin",
-        title: "Margin",
-        projectedValue: overallAchievedMargin * 100,
-        targetValue: (currentLinePlan?.targetOverallMargin ?? 0) * 100,
-        unit: "%",
-        icon: <ScaleIcon className="w-5 h-5" />,
-        higherIsBetter: true,
-        displayValueFormatter: (v: number) => `${v.toFixed(1)}%`,
-      },
-      {
-        key: "sellin",
-        title: "Sell-In",
-        projectedValue: sellInProjected,
-        targetValue: sellInTarget,
-        unit: "units",
-        icon: <PackageIcon className="w-5 h-5" />,
-        higherIsBetter: true,
-        displayValueFormatter: (v: number) => v.toLocaleString(),
-      },
-      {
-        key: "sellthrough",
-        title: "Sell-Through",
-        projectedValue: sellThroughProjected,
-        targetValue: (currentLinePlan?.targetOverallSellThrough ?? 0) * 100,
-        unit: "%",
-        icon: <PercentIcon className="w-5 h-5" />,
-        higherIsBetter: true,
-        displayValueFormatter: (v: number) => `${v.toFixed(1)}%`,
-      },
-    ];
-
-    // Show dependencies or lower-level cards if a metric is active
-    let dependenciesContent = null;
-    if (activeTargetFilter) {
-      // Example: show a list of categories or styles that contribute to the selected metric
-      if (
-        activeTargetFilter.type === "revenue" &&
-        currentLinePlan?.categories
-      ) {
-        dependenciesContent = (
-          <div className="mt-4">
-            <div className="text-xs font-semibold text-muted-foreground mb-2">
-              Category Revenue Breakdown
-            </div>
-            <div className="space-y-2">
-              {currentLinePlan.categories.map((cat) => {
-                const catRevenue =
-                  (cat.plannedStyles || []).reduce(
-                    (sum, style) =>
-                      sum +
-                      style.sellingPrice *
-                        (cat.targetVolume /
-                          ((cat.plannedStyles || []).length || 1)),
-                    0
-                  ) / 1000000;
-                return (
-                  <div
-                    key={cat.id}
-                    className="flex justify-between text-xs px-2 py-1 rounded bg-muted/50"
-                  >
-                    <span className="truncate">{cat.name}</span>
-                    <span className="font-mono">${catRevenue.toFixed(2)}M</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      } else if (
-        activeTargetFilter.type === "margin" &&
-        currentLinePlan?.categories
-      ) {
-        dependenciesContent = (
-          <div className="mt-4">
-            <div className="text-xs font-semibold text-muted-foreground mb-2">
-              Category Margin Breakdown
-            </div>
-            <div className="space-y-2">
-              {currentLinePlan.categories.map((cat) => {
-                let totalRevenue = 0;
-                let totalCost = 0;
-                (cat.plannedStyles || []).forEach((style) => {
-                  const styleVolume =
-                    cat.targetVolume / ((cat.plannedStyles || []).length || 1);
-                  totalRevenue += style.sellingPrice * styleVolume;
-                  totalCost += style.costPrice * styleVolume;
-                });
-                const margin =
-                  totalRevenue === 0
-                    ? 0
-                    : ((totalRevenue - totalCost) / totalRevenue) * 100;
-                return (
-                  <div
-                    key={cat.id}
-                    className="flex justify-between text-xs px-2 py-1 rounded bg-muted/50"
-                  >
-                    <span className="truncate">{cat.name}</span>
-                    <span className="font-mono">{margin.toFixed(1)}%</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      } else if (
-        activeTargetFilter.type === "sellin" &&
-        currentLinePlan?.categories
-      ) {
-        dependenciesContent = (
-          <div className="mt-4">
-            <div className="text-xs font-semibold text-muted-foreground mb-2">
-              Category Sell-In Breakdown
-            </div>
-            <div className="space-y-2">
-              {currentLinePlan.categories.map((cat) => {
-                const projected = (cat.plannedStyles || []).reduce(
-                  (sum, style) => sum + (style.projectedSellIn || 0),
-                  0
-                );
-                return (
-                  <div
-                    key={cat.id}
-                    className="flex justify-between text-xs px-2 py-1 rounded bg-muted/50"
-                  >
-                    <span className="truncate">{cat.name}</span>
-                    <span className="font-mono">
-                      {projected.toLocaleString()} /{" "}
-                      {cat.targetVolume.toLocaleString()}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      } else if (
-        activeTargetFilter.type === "sellthrough" &&
-        currentLinePlan?.categories
-      ) {
-        dependenciesContent = (
-          <div className="mt-4">
-            <div className="text-xs font-semibold text-muted-foreground mb-2">
-              Category Sell-Through Breakdown
-            </div>
-            <div className="space-y-2">
-              {currentLinePlan.categories.map((cat) => {
-                let totalProjectedSellThroughUnits = 0;
-                let totalBaseUnits = 0;
-                (cat.plannedStyles || []).forEach((style) => {
-                  const baseVolume = style.projectedSellIn || 0;
-                  totalBaseUnits += baseVolume;
-                  totalProjectedSellThroughUnits +=
-                    (style.projectedSellThrough ?? 0.8) * baseVolume;
-                });
-                const sellThrough =
-                  totalBaseUnits > 0
-                    ? (totalProjectedSellThroughUnits / totalBaseUnits) * 100
-                    : 0;
-                return (
-                  <div
-                    key={cat.id}
-                    className="flex justify-between text-xs px-2 py-1 rounded bg-muted/50"
-                  >
-                    <span className="truncate">{cat.name}</span>
-                    <span className="font-mono">{sellThrough.toFixed(1)}%</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      }
-    }
-
-    return (
-      <div className="bg-card shadow-none border-none p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Program Targets</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditTargetsModalOpen(true)}
-          >
-            Edit Targets
-          </Button>
-        </div>
-        <div className="flex flex-col gap-4">
-          {metricCards.map((metric) => {
-            // Calculate progress and delta
-            const projected = metric.projectedValue;
-            const target = metric.targetValue;
-            const isPercent = metric.unit === "%";
-            const isCurrency = metric.unit === "$M";
-            const progress = target === 0 ? 0 : (projected / target) * 100;
-            const delta = projected - target;
-            const deltaPercent =
-              target === 0 ? 0 : ((projected - target) / target) * 100;
-            // Status thresholds
-            let status: "over" | "near" | "under";
-            if (progress >= 105) {
-              status = "over";
-            } else if (progress >= 95) {
-              status = "near";
-            } else {
-              status = "under";
-            }
-            // Icon and color for status (top right)
-            let StatusIcon = null;
-            let statusColor = "text-gray-400";
-            if (status === "over") {
-              StatusIcon = ChevronUpIcon;
-              statusColor = "text-green-600";
-            } else if (status === "near") {
-              StatusIcon = ChevronRightIcon;
-              statusColor = "text-yellow-500";
-            } else {
-              StatusIcon = MinusIcon;
-              statusColor = "text-red-500";
-            }
-            // Delta string
-            let deltaString = "";
-            if (isPercent) {
-              deltaString = `${delta >= 0 ? "+" : ""}${deltaPercent.toFixed(
-                1
-              )}% ${delta >= 0 ? "over" : "below"} target`;
-            } else if (isCurrency) {
-              deltaString = `${delta >= 0 ? "+" : "-"}$${Math.abs(
-                delta
-              ).toFixed(2)}M ${delta >= 0 ? "over" : "below"} target`;
-            } else {
-              deltaString = `${delta >= 0 ? "+" : "-"}${Math.abs(
-                delta
-              ).toLocaleString()} ${delta >= 0 ? "over" : "below"} target`;
-            }
-            return (
-              <div
-                key={metric.key}
-                className="relative p-4 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer flex flex-col gap-1 transition-colors duration-200"
-                onClick={() =>
-                  setActiveTargetFilter((prev) =>
-                    prev?.type === metric.key
-                      ? null
-                      : {
-                          type: metric.key as ActiveTargetFilterType,
-                          displayName: metric.title,
-                        }
-                  )
-                }
-              >
-                {/* Title row with icon and status icon */}
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    {metric.icon}
-                    <span className="text-sm font-medium">{metric.title}</span>
-                  </div>
-                  <span
-                    className={`ml-2 ${statusColor}`}
-                    title={
-                      status === "over"
-                        ? "Over Target"
-                        : status === "near"
-                        ? "Near Target"
-                        : "Under Target"
-                    }
-                  >
-                    <StatusIcon className="w-5 h-5" />
-                  </span>
-                </div>
-                <div className="flex items-end justify-between mb-1">
-                  <span className="text-xl font-bold">
-                    {metric.displayValueFormatter(projected)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Target: {metric.displayValueFormatter(target)}
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden mb-1">
-                  <div
-                    className={`h-full transition-all duration-300 ${statusColor.replace(
-                      "text-",
-                      "bg-"
-                    )}`}
-                    style={{
-                      width: `${Math.min(100, progress)}%`,
-                    }}
-                  />
-                </div>
-                <div className={`text-xs font-medium ${statusColor}`}>
-                  {deltaString}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {dependenciesContent}
-      </div>
-    );
-  };
-
-  const handleSelectCategory = (category: LinePlanCategory) => {
-    setSelectedCategoryId(category.id);
-    setSelectedProductId(null);
-    setViewMode("category");
-  };
-
-  const handleBackToOverview = () => {
-    setSelectedCategoryId(null);
-    setSelectedProductId(null);
-    setViewMode("overview");
-  };
-
-  const handleBackToCategory = () => {
-    setSelectedProductId(null);
-    // Keep selectedCategoryId and viewMode as "category"
-  };
-
-  const handleShowComposition = () => {
-    setViewMode("composition");
-  };
-
-  const handleBackFromComposition = () => {
-    setViewMode("overview");
-  };
-
-  const handleProductSelect = (productId: string) => {
-    setSelectedProductId(productId);
-  };
-
-  const handleProductBack = () => {
-    setSelectedProductId(null);
-  };
-
-  const handleProductClickFromComposition = (
-    projectId: string,
-    _productId: string
-  ) => {
-    setSelectedCategoryId(projectId);
-    setViewMode("category");
-  };
-
-  const renderProductLinesSectionContent = (layout: LayoutViewOption) => {
-    const { containerClasses, cardDisplayMode } = getLayoutConfig(layout);
-
-    if (viewMode === "composition" && currentLinePlan) {
-      return (
-        <div className="flex-grow p-5">
-          <CompositionView
-            linePlan={currentLinePlan}
-            onBack={handleBackFromComposition}
-            onProductClick={handleProductClickFromComposition}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-          />
-        </div>
-      );
-    }
-
-    if (viewMode === "category" && selectedCategoryId) {
-      const selectedCategory = (currentLinePlan?.categories || []).find(
-        (cat) => cat.id === selectedCategoryId
-      );
-      if (!selectedCategory) {
-        setSelectedCategoryId(null);
-        setViewMode("overview");
-        return null;
-      }
-
-      return (
-        <div className="flex-1 h-full overflow-hidden">
-          <CategoryDetailView
-            category={selectedCategory}
-            onUpdateStyle={handleUpdateStyle}
-            onAddStyle={handleAddStyle}
-            currentLayout={layout}
-            userRole={userRole}
-            programName={currentLinePlan?.name || "Untitled Program"}
-            selectedProductId={selectedProductId}
-            onProductSelect={handleProductSelect}
-            onProductBack={handleProductBack}
-          />
-        </div>
-      );
-    }
-
-    return (
-      <div className={`${containerClasses} items-start auto-rows-min gap-5`}>
-        {(sortedCategories || []).map((category) => (
-          <ProductLineCategoryCard
-            key={category.id}
-            category={category}
-            onSelectCategory={handleSelectCategory}
-            onAddNewStyle={handleAddNewStyleToCategory}
-            activeTargetFilter={activeTargetFilter?.type || null}
-            targetOverallMargin={currentLinePlan?.targetOverallMargin ?? 0}
-            season={currentLinePlan?.season ?? ""}
-            displayMode={cardDisplayMode}
-            metricViewStyle={categoryMetricView}
-            userRole={userRole}
-            onStatusChange={handleCategoryStatusChange}
-          />
-        ))}
-        {(currentLinePlan?.categories || []).length === 0 && (
-          <div className="md:col-span-full text-center py-16 px-6">
-            <CollectionIcon className="w-16 h-16 text-muted mx-auto mb-4" />
-            <h3 className="text-md font-semibold text-card-foreground">
-              This Plan is Empty
-            </h3>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Add categories (projects) and styles to start planning your
-              assortment.
-            </p>
-            <Button
-              onClick={() => setIsAddCategoryModalOpen(true)}
-              className="mt-4"
-            >
-              Add Category
-            </Button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const handleUpdateStyle = (
-    categoryId: string,
-    updatedStyle: PlannedStyle
-  ) => {
-    setLinePlans((prevPlans: LinePlan[]) =>
-      prevPlans.map((plan: LinePlan) =>
-        plan.id === currentLinePlan?.id
-          ? {
-              ...plan,
-              categories: plan.categories.map((cat) =>
-                cat.id === categoryId
-                  ? {
-                      ...cat,
-                      plannedStyles: cat.plannedStyles.map((style) =>
-                        style.id === updatedStyle.id ? updatedStyle : style
-                      ),
-                    }
-                  : cat
-              ),
-            }
-          : plan
-      )
-    );
-  };
-
-  const handleAddStyle = (categoryId: string, newStyle: PlannedStyle) => {
-    setLinePlans((prevPlans: LinePlan[]) =>
-      prevPlans.map((plan: LinePlan) =>
-        plan.id === currentLinePlan?.id
-          ? {
-              ...plan,
-              categories: plan.categories.map((cat) =>
-                cat.id === categoryId
-                  ? {
-                      ...cat,
-                      plannedStyles: [...cat.plannedStyles, newStyle],
-                    }
-                  : cat
-              ),
-            }
-          : plan
-      )
-    );
-  };
-
-  const handleCategoryStatusChange = (
-    category: LinePlanCategory,
-    newStatus: PLMStatusStage
-  ) => {
-    setLinePlans((prevPlans: LinePlan[]) =>
-      prevPlans.map((plan: LinePlan) =>
-        plan.id === currentLinePlan?.id
-          ? {
-              ...plan,
-              categories: plan.categories.map((cat) =>
-                cat.id === category.id ? { ...cat, plmStatus: newStatus } : cat
-              ),
-            }
-          : plan
-      )
-    );
-  };
-
-  const handleOpenEditCategoryTargetsModal = (categoryId: string) => {
-    setEditingCategoryId(categoryId);
-    setIsEditCategoryTargetsModalOpen(true);
-  };
-
   const handleCloseEditCategoryTargetsModal = () => {
     setEditingCategoryId(null);
     setIsEditCategoryTargetsModalOpen(false);
@@ -1303,119 +690,6 @@ const ProgramOverviewPage = ({
     handleCloseEditCategoryTargetsModal();
   };
 
-  const handleProgramStatusChange = (newStatus: PLMStatusStage) => {
-    setLinePlans((prevPlans) =>
-      prevPlans.map((plan) =>
-        plan.id === currentLinePlan?.id
-          ? { ...plan, plmStatus: newStatus }
-          : plan
-      )
-    );
-  };
-
-  // Resize handling functions
-  const handleResizeMove = React.useCallback(
-    (e: MouseEvent) => {
-      if (!isResizingRef.current) return;
-
-      console.log(
-        "Mouse move",
-        e.clientX,
-        "isResizing:",
-        isResizingRef.current
-      );
-
-      // Get the sidebar width
-      const sidebarWidth = 288;
-
-      // Calculate new width based on mouse position relative to sidebar
-      const newWidth = Math.min(
-        MAX_PANEL_WIDTH,
-        Math.max(MIN_PANEL_WIDTH, e.clientX - sidebarWidth)
-      );
-
-      console.log(
-        "New width:",
-        newWidth,
-        "clientX:",
-        e.clientX,
-        "sidebarWidth:",
-        sidebarWidth
-      );
-
-      setTargetsPanelWidth(newWidth);
-    },
-    [MIN_PANEL_WIDTH, MAX_PANEL_WIDTH]
-  );
-
-  const handleTouchMove = React.useCallback(
-    (e: TouchEvent) => {
-      if (!isResizingRef.current || e.touches.length === 0) return;
-
-      const touch = e.touches[0];
-      const sidebarWidth = 288;
-
-      const newWidth = Math.min(
-        MAX_PANEL_WIDTH,
-        Math.max(MIN_PANEL_WIDTH, touch.clientX - sidebarWidth)
-      );
-
-      setTargetsPanelWidth(newWidth);
-    },
-    [MIN_PANEL_WIDTH, MAX_PANEL_WIDTH]
-  );
-
-  const handleResizeEnd = React.useCallback(() => {
-    console.log("Resize end");
-    isResizingRef.current = false;
-    setIsResizing(false);
-    document.removeEventListener("mousemove", handleResizeMove);
-    document.removeEventListener("mouseup", handleResizeEnd);
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-  }, [handleResizeMove]);
-
-  const handleTouchEnd = React.useCallback(() => {
-    isResizingRef.current = false;
-    setIsResizing(false);
-    document.removeEventListener("touchmove", handleTouchMove);
-    document.removeEventListener("touchend", handleTouchEnd);
-    document.body.style.userSelect = "";
-  }, [handleTouchMove]);
-
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    console.log("Resize start", e.clientX);
-    isResizingRef.current = true;
-    setIsResizing(true);
-    document.addEventListener("mousemove", handleResizeMove);
-    document.addEventListener("mouseup", handleResizeEnd);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    console.log("Touch start");
-    isResizingRef.current = true;
-    setIsResizing(true);
-    document.addEventListener("touchmove", handleTouchMove);
-    document.addEventListener("touchend", handleTouchEnd);
-    document.body.style.userSelect = "none";
-  };
-
-  // Cleanup resize listeners on unmount
-  React.useEffect(() => {
-    return () => {
-      document.removeEventListener("mousemove", handleResizeMove);
-      document.removeEventListener("mouseup", handleResizeEnd);
-      document.removeEventListener("touchmove", handleTouchMove);
-      document.removeEventListener("touchend", handleTouchEnd);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [handleResizeMove, handleResizeEnd, handleTouchMove, handleTouchEnd]);
-
   // Helper to group programs by status
   type ProgramStatus = "draft" | "archived" | string;
   type ProgramWithStatus = LinePlan & { status?: ProgramStatus };
@@ -1437,275 +711,230 @@ const ProgramOverviewPage = ({
     linePlans as ProgramWithStatus[]
   ).filter((p: ProgramWithStatus) => getProgramStatus(p) === "archived");
 
-  const renderProgramSection = (
-    programs: ProgramWithStatus[],
-    sectionLabel: string
-  ) => (
-    <SidebarGroup>
-      <SidebarGroupLabel>{sectionLabel}</SidebarGroupLabel>
-      <SidebarMenu>
-        {programs.map((plan: ProgramWithStatus) => {
-          const hasProjects = plan.categories && plan.categories.length > 0;
-          return (
-            <Collapsible
-              key={plan.id}
-              asChild
-              defaultOpen={currentLinePlan?.id === plan.id}
-              className="group/collapsible"
-            >
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton
-                    tooltip={plan.name}
-                    isActive={currentLinePlan?.id === plan.id}
-                    onClick={() => setCurrentLinePlanId(plan.id)}
-                    className="pl-4 flex items-center w-full justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Folder className="w-4 h-4" />
-                      <span>{plan.name}</span>
-                    </div>
-                    {hasProjects && (
-                      <ChevronRight className="ml-2 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                    )}
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-                {hasProjects && (
-                  <CollapsibleContent>
-                    <SidebarMenu className="ml-6 border-l border-border">
-                      {plan.categories.map((project: any) => (
-                        <SidebarMenuItem key={project.id}>
-                          <SidebarMenuButton
-                            tooltip={project.name}
-                            isActive={
-                              categoryMetricView &&
-                              (categoryMetricView as any).id === project.id
-                            }
-                            className="pl-4"
-                          >
-                            <Folder className="w-4 h-4" />
-                            <span>{project.name}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          onClick={onAddCategory}
-                          tooltip="Add Project"
-                          className="pl-4"
-                        >
-                          <PlusIcon className="w-4 h-4" />
-                          <span>Add Project</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </CollapsibleContent>
-                )}
-              </SidebarMenuItem>
-            </Collapsible>
-          );
-        })}
-      </SidebarMenu>
-    </SidebarGroup>
-  );
+  const handleCloseEditTargetsModal = () => {
+    setIsEditTargetsModalOpen(false);
+  };
 
-  /**
-   * MAIN RENDER: Shadcn Sidebar layout with program navigation and main content
-   *
-   * STRUCTURE:
-   * 1. SidebarProvider: Wraps entire layout with sidebar context
-   * 2. Sidebar: Program navigation and creation
-   * 3. SidebarInset: Main content area (header bar + content area)
-   */
+  useEffect(() => {
+    // Initialize values when currentLinePlan changes
+  }, [currentLinePlan]);
+
+  const handleReset = () => {
+    // Reset all filters
+    setFilters({
+      categories: [],
+      excludeCategories: [],
+      tags: [],
+      excludeTags: [],
+      priceRange: { min: 0, max: 1000 },
+      marginRange: { min: 0, max: 100 },
+      status: [],
+    });
+
+    // Reset view states
+    setSelectedCategoryId(null);
+    setViewMode("overview");
+    setCurrentLayout("compactList");
+    setActiveTargetFilter(null);
+
+    // Reset panel states
+    setIsMetricsPanelCollapsed(false);
+    setIsCollapsed(false);
+
+    // Reset modal states
+    setIsAddCategoryModalOpen(false);
+    setIsEditTargetsModalOpen(false);
+    setIsEditCategoryTargetsModalOpen(false);
+    setEditingCategoryId(null);
+    setIsAddPopoverOpen(false);
+
+    // Clear local storage UI preferences
+    saveUIPreferences({});
+
+    // Clear all line plans and current line plan ID
+    saveLinePlans([]);
+    saveCurrentLinePlanId("");
+    setLinePlans([]);
+    setCurrentLinePlanId("");
+  };
+
   return (
-    <SidebarProvider defaultOpen={true}>
-      <div className="flex h-screen w-full overflow-x-hidden bg-background">
-        <Sidebar collapsible="icon" variant="inset">
-          <SidebarHeader>
-            <div className="flex items-center gap-2 pl-4 pr-2">
-              <span className="font-semibold text-lg">Line Planner</span>
-              <SidebarTrigger />
-            </div>
-          </SidebarHeader>
-          <SidebarContent>
-            {/* Add Program CTA at the top */}
-            <div className="px-4 pt-4 pb-2">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleInitiateProgramCreation}
-                className="w-full text-sm font-medium"
-              >
-                <PlusIcon className="h-4 h-4 mr-2" /> Add Program
-              </Button>
-            </div>
-            {renderProgramSection(drafts, "Drafts")}
-            {renderProgramSection(current, "Current")}
-            {renderProgramSection(archived, "Archived")}
-          </SidebarContent>
-          <SidebarFooter>
-            <div className="flex items-center justify-center w-full">
-              <span className="text-xs text-muted-foreground">v1.0.0</span>
-            </div>
-          </SidebarFooter>
-          <SidebarRail />
-        </Sidebar>
-        <SidebarInset className="flex-1">
-          {/* --- BEGIN: Program Overview Top Navigation Bar --- */}
-          <div className="sticky top-0 z-10 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-6 py-3 gap-4">
-            {/* Breadcrumbs */}
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link to="/">Home</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="[&>svg]:w-3 [&>svg]:h-3" />
-                <BreadcrumbItem>
-                  {viewMode === "category" && selectedCategoryId ? (
-                    <>
-                      <BreadcrumbLink asChild>
-                        <Link to="/">Program Overview</Link>
-                      </BreadcrumbLink>
-                      <BreadcrumbSeparator className="[&>svg]:w-3 [&>svg]:h-3" />
-                      <BreadcrumbPage>
-                        {currentLinePlan?.categories.find(
-                          (cat) => cat.id === selectedCategoryId
-                        )?.name || "Category"}
-                      </BreadcrumbPage>
-                    </>
-                  ) : viewMode === "composition" ? (
-                    <>
-                      <BreadcrumbLink asChild>
-                        <Link to="/">Program Overview</Link>
-                      </BreadcrumbLink>
-                      <BreadcrumbSeparator className="[&>svg]:w-3 [&>svg]:h-3" />
-                      <BreadcrumbPage>Composition</BreadcrumbPage>
-                    </>
-                  ) : (
-                    <BreadcrumbPage>Program Overview</BreadcrumbPage>
-                  )}
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-            {/* Layout toggle and actions */}
-            <div className="flex items-center gap-2">
-              {/* View/layout toggle */}
-              <ToggleGroup
-                type="single"
-                value={currentLayout}
-                onValueChange={(val) =>
-                  val && setCurrentLayout(val as LayoutViewOption)
-                }
-                className="mr-2"
-              >
-                {LAYOUT_OPTIONS.map((opt) => (
-                  <ToggleGroupItem
-                    key={opt.value}
-                    value={opt.value}
-                    aria-label={opt.label}
-                    className="h-8 w-8"
-                  >
-                    <opt.icon className="h-4 w-4" />
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-              {/* Composition button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShowComposition}
-                className="h-8"
-              >
-                <BarChart2Icon className="h-4 w-4 mr-1" /> Composition
-              </Button>
-              {/* Create/Add button */}
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowCreateProgramForm(true)}
-                className="h-8"
-              >
-                <PlusIcon className="h-4 w-4 mr-1" /> Create
-              </Button>
-            </div>
+    <div className="flex h-screen w-full overflow-x-hidden bg-background">
+      <div className="flex flex-col w-full">
+        {/* Header */}
+        <header className="h-14 border-b bg-background px-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Menu className="h-4 w-4" />
+            </Button>
+            <h1 className="text-md font-semibold">Line Planner</h1>
           </div>
-          {/* --- END: Program Overview Top Navigation Bar --- */}
-          {/* --- BEGIN: Full dashboard content --- */}
-          <div className="flex flex-col h-full">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={handleReset}>
+              Reset
+            </Button>
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>Y</AvatarFallback>
+            </Avatar>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex flex-1 overflow-hidden">
+          {/* Sidebar */}
+          <ProgramSidebar
+            onInitiateProgramCreation={handleInitiateProgramCreation}
+            drafts={drafts}
+            current={current}
+            archived={archived}
+            onProgramSelect={setCurrentLinePlanId}
+            currentLinePlanId={currentLinePlan?.id || null}
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+          />
+
+          {/* Content Area */}
+          <div className="flex flex-col h-full flex-1 overflow-hidden">
+            {/* Toolbar */}
+            <nav className="border-b bg-background pr-6">
+              <div className="flex items-center justify-between">
+                {/* Left Side - Navigation */}
+                <div className="flex items-center">
+                  <div className="flex items-center p-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-slate-100 flex-shrink-0"
+                      onClick={() => setIsCollapsed(!isCollapsed)}
+                      aria-label={
+                        isCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                      }
+                    >
+                      {isCollapsed ? (
+                        <ChevronsRight className="h-4 w-4" />
+                      ) : (
+                        <ChevronsLeft className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Separator orientation="vertical" className="h-12" />
+
+                  <Breadcrumb className="pl-4">
+                    <BreadcrumbList>
+                      <BreadcrumbItem>
+                        <BreadcrumbLink href="/">Programs</BreadcrumbLink>
+                      </BreadcrumbItem>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        {selectedCategoryId ? (
+                          <BreadcrumbLink onClick={handleBackToOverview}>
+                            {currentLinePlan?.name || "Untitled Program"}
+                          </BreadcrumbLink>
+                        ) : (
+                          <BreadcrumbPage>
+                            {currentLinePlan?.name || "Untitled Program"}
+                          </BreadcrumbPage>
+                        )}
+                      </BreadcrumbItem>
+                      {selectedCategoryId && (
+                        <>
+                          <BreadcrumbSeparator />
+                          <BreadcrumbItem>
+                            <BreadcrumbPage>
+                              {currentLinePlan?.categories.find(
+                                (cat) => cat.id === selectedCategoryId
+                              )?.name || "Category"}
+                            </BreadcrumbPage>
+                          </BreadcrumbItem>
+                        </>
+                      )}
+                    </BreadcrumbList>
+                  </Breadcrumb>
+                </div>
+
+                {/* Right Side - Actions */}
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleShowComposition}
+                    className={cn(
+                      "transition-colors",
+                      viewMode === "composition" &&
+                        "bg-blue-100 hover:bg-blue-200"
+                    )}
+                  >
+                    <BarChart2Icon className="w-4 h-4 mr-2" />
+                    Composition
+                  </Button>
+
+                  <ToggleGroup
+                    type="single"
+                    value={currentLayout}
+                    onValueChange={(value) =>
+                      value && setCurrentLayout(value as LayoutViewOption)
+                    }
+                  >
+                    {LAYOUT_OPTIONS.map((option) => (
+                      <ToggleGroupItem
+                        key={option.value}
+                        value={option.value}
+                        size="sm"
+                        title={option.label}
+                        className={cn(
+                          currentLayout === option.value && "bg-blue-100",
+                          "hover:bg-slate-100"
+                        )}
+                      >
+                        <option.icon className="w-4 h-4" />
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <PlusIcon className="w-4 h-4 mr-2" />
+                        Add
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setIsAddCategoryModalOpen(true)}
+                      >
+                        <Folder className="w-4 h-4 mr-2" />
+                        Add Category
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={openCatalogueModal}>
+                        <PackageIcon className="w-4 h-4 mr-2" />
+                        Add from Catalogue
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </nav>
+
+            {/* Main Content Area */}
             <div className="flex flex-1 overflow-hidden">
-              {/* If creating a new program, show the three-column entry form */}
               {showCreateProgramForm ? (
-                <div className="flex-1 h-full bg-muted/30 w-full">
-                  <div className="h-full w-full relative">
+                <div className="flex-1 h-full bg-muted/30 w-full ">
+                  <div className="h-full w-full relative ">
                     <div className="h-full grid grid-cols-3 gap-0 w-full">
-                      {/* LEFT PANEL – Program Basic Info */}
-                      <div className="h-full bg-background border-r">
-                        <div className="h-full flex flex-col">
-                          <div className="p-6 border-b bg-background">
-                            <div className="space-y-1">
-                              <h1 className="text-xl font-semibold tracking-tight">
-                                Basic Information
-                              </h1>
-                              <p className="text-sm text-muted-foreground">
-                                Program name and season details
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex-1 p-6 overflow-y-auto">
-                            <Card>
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-base">
-                                  Program Details
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="programName">
-                                    Program Name
-                                  </Label>
-                                  <Input
-                                    id="programName"
-                                    type="text"
-                                    value={programName}
-                                    onChange={(e) =>
-                                      setProgramName(e.target.value)
-                                    }
-                                    placeholder="Enter program name"
-                                    required
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="programSeason">Season</Label>
-                                  <Input
-                                    id="programSeason"
-                                    type="text"
-                                    value={programSeason}
-                                    onChange={(e) =>
-                                      setProgramSeason(e.target.value)
-                                    }
-                                    placeholder="e.g., Spring 2024"
-                                    required
-                                  />
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </div>
-                      </div>
-
                       {/* MIDDLE PANEL – Target Metrics */}
-                      <div className="h-full bg-background border-r">
+                      <div className="h-full bg-background border-r ">
                         <div className="h-full flex flex-col">
                           <div className="p-6 border-b bg-background">
                             <div className="space-y-1">
                               <h1 className="text-xl font-semibold tracking-tight">
-                                Target Metrics
+                                Program Details
                               </h1>
                               <p className="text-sm text-muted-foreground">
-                                Set performance targets for this program
+                                Configure program information and targets
                               </p>
                             </div>
                           </div>
@@ -1718,7 +947,47 @@ const ProgramOverviewPage = ({
                               <Card>
                                 <CardHeader className="pb-3">
                                   <CardTitle className="text-base">
-                                    Financial Targets
+                                    Basic Information
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="programName">
+                                      Program Name
+                                    </Label>
+                                    <Input
+                                      id="programName"
+                                      type="text"
+                                      value={programName}
+                                      onChange={(e) =>
+                                        setProgramName(e.target.value)
+                                      }
+                                      placeholder="Enter program name"
+                                      required
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="programSeason">
+                                      Season
+                                    </Label>
+                                    <Input
+                                      id="programSeason"
+                                      type="text"
+                                      value={programSeason}
+                                      onChange={(e) =>
+                                        setProgramSeason(e.target.value)
+                                      }
+                                      placeholder="e.g., Spring 2024"
+                                      required
+                                    />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-base">
+                                    Target Metrics
                                   </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -1806,7 +1075,7 @@ const ProgramOverviewPage = ({
                       </div>
 
                       {/* RIGHT PANEL – Projects */}
-                      <div className="h-full bg-background">
+                      <div className="h-full bg-background ">
                         <div className="h-full flex flex-col">
                           <div className="p-6 border-b bg-background">
                             <div className="flex items-center justify-between">
@@ -1988,27 +1257,321 @@ const ProgramOverviewPage = ({
                   </div>
                 </div>
               ) : (
-                // Default dashboard view
                 <>
-                  {/* Targets panel */}
-                  <section
-                    className="bg-card border-r border-border overflow-y-auto styled-scrollbar flex-shrink-0"
-                    style={{ width: targetsPanelWidth + "px" }}
-                  >
-                    {renderTargetsSectionContent(currentLayout)}
-                  </section>
-                  {/* Main grid/list area */}
-                  <div className="flex-1 overflow-y-auto styled-scrollbar">
-                    {renderProductLinesSectionContent(currentLayout)}
+                  <div className="flex-1 overflow-y-auto styled-scrollbar bg-slate-50">
+                    <div className="flex gap-5 p-5">
+                      <div className="flex-1">
+                        <div className="space-y-5">
+                          {renderProductLinesSectionContent(currentLayout)}
+                        </div>
+                      </div>
+                      <div
+                        className={cn(
+                          "bg-card rounded-lg border transition-all duration-200",
+                          isMetricsPanelCollapsed ? "w-[60px]" : "w-[280px]"
+                        )}
+                      >
+                        <div
+                          className="flex items-center justify-between p-3 border-b cursor-pointer hover:bg-accent/50"
+                          onClick={() =>
+                            setIsMetricsPanelCollapsed(!isMetricsPanelCollapsed)
+                          }
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Settings className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <div
+                              className={cn(
+                                "flex items-center gap-2",
+                                isMetricsPanelCollapsed && "hidden"
+                              )}
+                            >
+                              <span className="text-sm font-medium truncate">
+                                Target Metrics
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsEditTargetsModalOpen(true)}
+                                className="h-7 px-2 text-xs"
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          </div>
+                          <ChevronRight
+                            className={cn(
+                              "w-4 h-4 transition-transform",
+                              !isMetricsPanelCollapsed && "rotate-180"
+                            )}
+                          />
+                        </div>
+                        {isMetricsPanelCollapsed
+                          ? (() => {
+                              // Calculations for metrics
+                              const sellInProjected = (
+                                currentLinePlan?.categories || []
+                              ).reduce((sum, cat) => {
+                                const stylesCount =
+                                  (cat.plannedStyles || []).length || 1;
+                                const volumePerStyle =
+                                  cat.targetVolume / stylesCount;
+                                return (
+                                  sum +
+                                  (cat.plannedStyles || []).reduce(
+                                    (styleSum, style) =>
+                                      styleSum +
+                                      (style.projectedSellIn || volumePerStyle),
+                                    0
+                                  )
+                                );
+                              }, 0);
+                              const sellInTarget = (
+                                currentLinePlan?.categories || []
+                              ).reduce((sum, cat) => sum + cat.targetVolume, 0);
+                              const sellThroughProjected = (() => {
+                                if (!currentLinePlan?.categories) return 0;
+                                let totalProjectedSellThroughUnits = 0;
+                                let totalBaseUnits = 0;
+                                (currentLinePlan.categories || []).forEach(
+                                  (cat) => {
+                                    const stylesCount =
+                                      (cat.plannedStyles || []).length || 1;
+                                    const volumePerStyle =
+                                      cat.targetVolume / stylesCount;
+                                    (cat.plannedStyles || []).forEach(
+                                      (style) => {
+                                        const baseVolume =
+                                          style.projectedSellIn ||
+                                          volumePerStyle;
+                                        totalBaseUnits += baseVolume;
+                                        totalProjectedSellThroughUnits +=
+                                          (style.projectedSellThrough ?? 0.8) *
+                                          baseVolume;
+                                      }
+                                    );
+                                  }
+                                );
+                                return totalBaseUnits > 0
+                                  ? (totalProjectedSellThroughUnits /
+                                      totalBaseUnits) *
+                                      100
+                                  : 0;
+                              })();
+
+                              return (
+                                <div className="p-2 space-y-2">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="p-2 rounded-md hover:bg-accent/50 cursor-pointer flex items-center justify-center relative">
+                                          <CurrencyDollarIcon className="w-4 h-4 text-muted-foreground" />
+                                          <div
+                                            className={cn(
+                                              "absolute bottom-0 right-0 w-2 h-2 rounded-full",
+                                              overallProjectedRevenue >=
+                                                (currentLinePlan?.targetOverallRevenue ??
+                                                  0) /
+                                                  1000000
+                                                ? "bg-green-500"
+                                                : overallProjectedRevenue >=
+                                                  ((currentLinePlan?.targetOverallRevenue ??
+                                                    0) /
+                                                    1000000) *
+                                                    0.9
+                                                ? "bg-orange-500"
+                                                : "bg-red-500"
+                                            )}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Revenue</p>
+                                        <p className="text-sm">
+                                          Target: $
+                                          {(currentLinePlan?.targetOverallRevenue ??
+                                            0) / 1000000}
+                                          M
+                                        </p>
+                                        <p className="text-sm">
+                                          Current: ${overallProjectedRevenue}M
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="p-2 rounded-md hover:bg-accent/50 cursor-pointer flex items-center justify-center relative">
+                                          <ScaleIcon className="w-4 h-4 text-muted-foreground" />
+                                          <div
+                                            className={cn(
+                                              "absolute bottom-0 right-0 w-2 h-2 rounded-full",
+                                              overallAchievedMargin >=
+                                                (currentLinePlan?.targetOverallMargin ??
+                                                  0)
+                                                ? "bg-green-500"
+                                                : overallAchievedMargin >=
+                                                  (currentLinePlan?.targetOverallMargin ??
+                                                    0) *
+                                                    0.9
+                                                ? "bg-orange-500"
+                                                : "bg-red-500"
+                                            )}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Margin</p>
+                                        <p className="text-sm">
+                                          Target:{" "}
+                                          {(currentLinePlan?.targetOverallMargin ??
+                                            0) * 100}
+                                          %
+                                        </p>
+                                        <p className="text-sm">
+                                          Current:{" "}
+                                          {(
+                                            overallAchievedMargin * 100
+                                          ).toFixed(1)}
+                                          %
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="p-2 rounded-md hover:bg-accent/50 cursor-pointer flex items-center justify-center relative">
+                                          <PackageIcon className="w-4 h-4 text-muted-foreground" />
+                                          <div
+                                            className={cn(
+                                              "absolute bottom-0 right-0 w-2 h-2 rounded-full",
+                                              sellInProjected >= sellInTarget
+                                                ? "bg-green-500"
+                                                : sellInProjected >=
+                                                  sellInTarget * 0.9
+                                                ? "bg-orange-500"
+                                                : "bg-red-500"
+                                            )}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Sell-In</p>
+                                        <p className="text-sm">
+                                          Target: {sellInTarget} units
+                                        </p>
+                                        <p className="text-sm">
+                                          Current: {sellInProjected} units
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="p-2 rounded-md hover:bg-accent/50 cursor-pointer flex items-center justify-center relative">
+                                          <PercentIcon className="w-4 h-4 text-muted-foreground" />
+                                          <div
+                                            className={cn(
+                                              "absolute bottom-0 right-0 w-2 h-2 rounded-full",
+                                              sellThroughProjected >=
+                                                (currentLinePlan?.targetOverallSellThrough ??
+                                                  0) *
+                                                  100
+                                                ? "bg-green-500"
+                                                : sellThroughProjected >=
+                                                  (currentLinePlan?.targetOverallSellThrough ??
+                                                    0) *
+                                                    90
+                                                ? "bg-orange-500"
+                                                : "bg-red-500"
+                                            )}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">
+                                          Sell-Through
+                                        </p>
+                                        <p className="text-sm">
+                                          Target:{" "}
+                                          {(currentLinePlan?.targetOverallSellThrough ??
+                                            0) * 100}
+                                          %
+                                        </p>
+                                        <p className="text-sm">
+                                          Current:{" "}
+                                          {sellThroughProjected.toFixed(1)}%
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                              );
+                            })()
+                          : renderTargetsSectionContent()}
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
             </div>
           </div>
-          {/* --- END: Full dashboard content --- */}
-        </SidebarInset>
+        </main>
       </div>
-    </SidebarProvider>
+
+      {/* Add Category Modal */}
+      <AddCategoryModal
+        isOpen={isAddCategoryModalOpen}
+        onClose={() => setIsAddCategoryModalOpen(false)}
+        onAddCategory={() => {
+          onAddCategory();
+          setIsAddCategoryModalOpen(false);
+        }}
+      />
+
+      {/* Edit Program Targets Modal */}
+      {currentLinePlan && (
+        <EditProgramTargetsModal
+          isOpen={isEditTargetsModalOpen}
+          onClose={handleCloseEditTargetsModal}
+          currentLinePlan={currentLinePlan}
+          onUpdateTargets={onUpdateTargets}
+        />
+      )}
+
+      {/* Category Targets Modal */}
+      {editingCategoryId && currentLinePlan && (
+        <CategoryTargetsModal
+          isOpen={isEditCategoryTargetsModalOpen}
+          onClose={handleCloseEditCategoryTargetsModal}
+          initialValues={currentLinePlan.categories.find(
+            (cat) => cat.id === editingCategoryId
+          )}
+          onSave={(updatedData) =>
+            handleSaveCategoryTargets(editingCategoryId, updatedData)
+          }
+        />
+      )}
+
+      {/* Add Options Popover */}
+      <AddOptionsPopover
+        isOpen={isAddPopoverOpen}
+        onClose={() => setIsAddPopoverOpen(false)}
+        anchorRef={addButtonRef}
+        onAddCategory={() => setIsAddCategoryModalOpen(true)}
+        onAddCarryover={openCatalogueModal}
+        onAddPlaceholder={() => {
+          if (selectedCategoryId) {
+            handleAddPlaceholder(selectedCategoryId);
+          }
+        }}
+      />
+    </div>
   );
 };
 

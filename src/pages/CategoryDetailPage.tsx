@@ -36,29 +36,17 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   LinePlanCategory,
   PlannedStyle,
-  MasterComponent,
-  PlannedStyleStatus,
   PLMStatusStage,
-  StyleComponentUsage,
   StyleMetricViewOption,
-  UserRole,
   LinePlan,
 } from "../types";
-import { masterComponentsData as allMasterComponents } from "../data";
-import { updateStyleFinancials, generateId } from "../services/planningService";
-import Modal from "../components/Modal";
+
 import {
-  PencilIcon,
   PlusCircleIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
   ChevronLeftIcon,
-  CollectionIcon,
   InformationCircleIcon,
-  ArrowUpRightIcon,
-} from "../components/icons";
-import TagListDisplay from "../components/TagListDisplay";
-import StatusBadge from "../components/StatusBadge";
+} from "../components/common/icons";
+import StatusBadge from "../components/common/StatusBadge";
 import { calculateCategoryStatus } from "../utils/statusSystem";
 
 // Props interface for the category detail page
@@ -94,12 +82,8 @@ const STYLE_METRIC_VIEW_OPTIONS: {
  * - Status management and workflow
  */
 const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
-  linePlans,
   currentLinePlan,
-  setLinePlans,
-  onUpdateStyle,
-  onAddStyle,
-  onCategoryStatusChange,
+
   styleMetricView,
 }) => {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -110,23 +94,9 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
   const [category, setCategory] = useState<LinePlanCategory | undefined>(
     undefined
   );
-  const [editingStyle, setEditingStyle] = useState<PlannedStyle | null>(null);
 
   // MODAL STATES: Control for different modal dialogs
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
-  const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
-
-  // FORM STATE: Style creation/editing form data
-  const [styleForm, setStyleForm] = useState<Partial<PlannedStyle>>({
-    name: "",
-    color: "",
-    sellingPrice: 0,
-    costPrice: 0,
-    status: PlannedStyleStatus.PLACEHOLDER,
-    components: [],
-    projectedSellThrough: 0.8,
-    projectedSellIn: 100,
-  });
 
   // EFFECT: Load category data when route parameter changes
   useEffect(() => {
@@ -150,174 +120,10 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
   const openStyleModal = (style?: PlannedStyle) => {
     if (style) {
       // EDIT MODE: Pre-populate form with existing style data
-      setEditingStyle(style);
-      setStyleForm({ ...style });
     } else {
       // CREATE MODE: Initialize with default values
-      setEditingStyle(null);
-      setStyleForm({
-        id: generateId(),
-        name: "",
-        status: PlannedStyleStatus.PLACEHOLDER,
-        color: "",
-        imageUrl: `https://picsum.photos/seed/${generateId().substring(
-          0,
-          6
-        )}/300/400`,
-        sellingPrice: 0,
-        components: [],
-        projectedSellThrough: 0.8,
-        projectedSellIn: 100,
-      });
+      setIsStyleModalOpen(true);
     }
-    setIsStyleModalOpen(true);
-  };
-
-  const closeStyleModal = () => {
-    setIsStyleModalOpen(false);
-    setEditingStyle(null);
-    setStyleForm({});
-    // Clear URL query parameters when closing
-    if (new URLSearchParams(location.search).get("action") === "add") {
-      navigate(location.pathname, { replace: true });
-    }
-  };
-
-  /**
-   * FORM HANDLERS: Manage form input changes and validation
-   */
-  const handleStyleFormChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setStyleForm((prev) => ({
-      ...prev,
-      [name]: name === "sellingPrice" ? parseFloat(value) : value,
-    }));
-  };
-
-  /**
-   * SAVE FUNCTION: Process and save style data with financial calculations
-   */
-  const handleSaveStyle = () => {
-    if (!category) {
-      alert("Category not found. Cannot save style.");
-      return;
-    }
-    if (!styleForm.name || !styleForm.color) {
-      alert("Style Name and Color are required.");
-      return;
-    }
-
-    // FINANCIAL CALCULATIONS: Cost, price, and margin computation
-    const costPrice = Number(styleForm.costPrice) || 0;
-    const sellingPrice = Number(styleForm.sellingPrice) || 0;
-    let margin = 0;
-    if (sellingPrice > 0) {
-      margin = (sellingPrice - costPrice) / sellingPrice;
-    }
-
-    // BUILD STYLE OBJECT: Compile all style data
-    const styleToSave: PlannedStyle = {
-      id: editingStyle?.id || generateId(),
-      name: styleForm.name || "New Style",
-      color: styleForm.color || "N/A",
-      costPrice: costPrice,
-      sellingPrice: sellingPrice,
-      margin: margin,
-      status: styleForm.status || PlannedStyleStatus.PLACEHOLDER,
-      plmStatus: editingStyle?.plmStatus || PLMStatusStage.BRIEFING,
-      imageUrl: styleForm.imageUrl || editingStyle?.imageUrl,
-      components: styleForm.components || editingStyle?.components || [],
-      projectedSellThrough: Number(styleForm.projectedSellThrough) || 0,
-      projectedSellIn: Number(styleForm.projectedSellIn) || 0,
-      tags: styleForm.tags || editingStyle?.tags || [],
-    };
-
-    // SAVE ACTION: Update or create style
-    if (editingStyle) onUpdateStyle(category.id, styleToSave);
-    else onAddStyle(category.id, styleToSave);
-    closeStyleModal();
-  };
-
-  /**
-   * COMPONENT MODAL FUNCTIONS: Handle material/component assignment
-   */
-  const openComponentModal = (style: PlannedStyle) => {
-    setEditingStyle(style);
-    setStyleForm({ ...style });
-    setIsComponentModalOpen(true);
-  };
-
-  const closeComponentModal = () => {
-    setIsComponentModalOpen(false);
-    setEditingStyle(null);
-    setStyleForm({});
-  };
-
-  /**
-   * COMPONENT MANAGEMENT: Handle adding/removing components from styles
-   */
-  const handleComponentChange = (
-    componentType: MasterComponent["type"],
-    newComponentId: string
-  ) => {
-    if (!editingStyle || !styleForm.components) return;
-
-    // COMPONENT DATA: Get master component details for calculations
-    const masterCompDetails = allMasterComponents.find(
-      (mc) => mc.id === newComponentId
-    );
-    const quantity = masterCompDetails?.type === "FABRIC" ? 1.5 : 1;
-
-    // FIND EXISTING: Check if component type already exists
-    const existingComponentIndex = styleForm.components.findIndex(
-      (c) =>
-        allMasterComponents.find((mc) => mc.id === c.componentId)?.type ===
-        componentType
-    );
-
-    let updatedComponents: StyleComponentUsage[];
-    if (existingComponentIndex > -1) {
-      if (newComponentId === "")
-        // REMOVE: Delete component if empty ID provided
-        updatedComponents = styleForm.components.filter(
-          (_, index) => index !== existingComponentIndex
-        );
-      else
-        updatedComponents = styleForm.components.map((c, index) =>
-          index === existingComponentIndex
-            ? { componentId: newComponentId, quantity }
-            : c
-        );
-    } else {
-      if (newComponentId !== "")
-        updatedComponents = [
-          ...styleForm.components,
-          { componentId: newComponentId, quantity },
-        ];
-      else updatedComponents = [...styleForm.components];
-    }
-    setStyleForm((prev) => ({ ...prev, components: updatedComponents }));
-  };
-
-  const handleSaveComponents = () => {
-    if (!category || !editingStyle || !styleForm.components) {
-      alert("Category or style data missing. Cannot save components.");
-      return;
-    }
-    const styleWithNewComponents: PlannedStyle = {
-      ...editingStyle,
-      components: styleForm.components,
-    };
-    const fullyUpdatedStyle = updateStyleFinancials(
-      styleWithNewComponents,
-      allMasterComponents
-    );
-    onUpdateStyle(category.id, fullyUpdatedStyle);
-    closeComponentModal();
   };
 
   if (!category) {
@@ -339,78 +145,6 @@ const CategoryDetailPage: React.FC<CategoryDetailPageProps> = ({
       </div>
     );
   }
-
-  const getMarginIndicator = (margin: number) => {
-    if (!currentLinePlan) return null;
-    if (margin < currentLinePlan.targetOverallMargin * 0.85) {
-      return <ExclamationTriangleIcon className="w-3 h-3 mr-1 text-red-600" />;
-    } else if (margin < currentLinePlan.targetOverallMargin) {
-      return <ArrowUpRightIcon className="w-3 h-3 mr-1 text-amber-600" />;
-    } else {
-      return <CheckCircleIcon className="w-3 h-3 mr-1 text-green-600" />;
-    }
-  };
-
-  const renderStyleMarginCell = (style: PlannedStyle) => {
-    if (!currentLinePlan) return null;
-    const margin = style.margin;
-    const marginColorClass =
-      margin < currentLinePlan.targetOverallMargin * 0.85
-        ? "text-red-600"
-        : margin < currentLinePlan.targetOverallMargin
-        ? "text-amber-600"
-        : "text-green-600";
-
-    return (
-      <div className="flex items-center">
-        <span className={`font-medium ${marginColorClass}`}>
-          {(margin * 100).toFixed(1)}%
-        </span>
-        {getMarginIndicator(margin)}
-      </div>
-    );
-  };
-
-  const styleModalFooter = (
-    <>
-      <button
-        type="button"
-        onClick={closeStyleModal}
-        className="px-4 py-2 text-sm font-medium text-slate-700 bg-white hover:bg-slate-100 rounded-lg border border-slate-300 shadow-sm transition-all duration-150 ease-in-out active:bg-slate-200"
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        onClick={handleSaveStyle}
-        className="px-4 py-2 text-sm font-medium text-white bg-sky-500 hover:bg-sky-600 rounded-lg shadow-sm transition-all duration-150 ease-in-out active:bg-sky-700"
-      >
-        Save Style
-      </button>
-    </>
-  );
-
-  const componentModalFooter = (
-    <>
-      <button
-        type="button"
-        onClick={closeComponentModal}
-        className="px-4 py-2 text-sm font-medium text-slate-700 bg-white hover:bg-slate-100 rounded-lg border border-slate-300 shadow-sm transition-all duration-150 ease-in-out active:bg-slate-200"
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        onClick={handleSaveComponents}
-        className="px-4 py-2 text-sm font-medium text-white bg-sky-500 hover:bg-sky-600 rounded-lg shadow-sm transition-all duration-150 ease-in-out active:bg-sky-700"
-      >
-        Save Components
-      </button>
-    </>
-  );
-
-  const categoryPlmStatus =
-    category.plmStatus || calculateCategoryStatus(category);
 
   return (
     <div className="flex flex-col h-full">

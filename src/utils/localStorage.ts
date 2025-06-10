@@ -204,6 +204,11 @@ export const migrateData = (version: string = "1.0.0"): void => {
 };
 
 // Export utilities for debugging/development
+export const clearUIPreferences = (): boolean => {
+  console.warn("Clearing UI preferences from localStorage");
+  return storageManager.removeItem(STORAGE_KEYS.UI_PREFERENCES);
+};
+
 export const clearAllData = (): boolean => {
   console.warn("Clearing all assortment planner data from localStorage");
   return (

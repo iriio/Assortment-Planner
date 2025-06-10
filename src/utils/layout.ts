@@ -1,25 +1,23 @@
-import { LayoutViewOption, LayoutConfig } from "@/types/layout";
+import { LayoutViewOption, LayoutConfig } from "../types/layout";
 
 export const getLayoutConfig = (layout: LayoutViewOption): LayoutConfig => {
   switch (layout) {
-    case "grid":
+    case "standard":
       return {
-        containerClasses: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+        containerClasses:
+          "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start auto-rows-auto",
         cardDisplayMode: "grid",
       };
-    case "list":
+    case "compactList":
       return {
-        containerClasses: "flex flex-col gap-4",
+        containerClasses: "space-y-3.5",
         cardDisplayMode: "list",
       };
-    case "table":
-      return {
-        containerClasses: "flex flex-col gap-4",
-        cardDisplayMode: "list",
-      };
+    case "wideView":
     default:
       return {
-        containerClasses: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+        containerClasses:
+          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start auto-rows-auto",
         cardDisplayMode: "grid",
       };
   }

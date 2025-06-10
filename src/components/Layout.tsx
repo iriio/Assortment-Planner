@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { MenuIcon, BellIcon } from "./icons";
-import { clearAllData } from "../utils/localStorage";
+import { MenuIcon, BellIcon } from "./common/icons";
+import { clearAllData, clearUIPreferences } from "../utils/localStorage";
 import { Button } from "@/components/ui/button";
 
 interface LayoutProps {
@@ -38,6 +38,17 @@ const Layout: React.FC<LayoutProps> = ({
     }
   };
 
+  const handleResetUIPreferences = () => {
+    if (
+      window.confirm(
+        "Reset UI preferences to defaults? This will only reset the layout and view settings."
+      )
+    ) {
+      clearUIPreferences();
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <header className="bg-card text-card-foreground border-b flex-shrink-0 shadow-sm">
@@ -58,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({
               </div>
             </div>
 
-            <nav className="flex space-x-1">
+            <nav className="flex items-center space-x-1">
               {headerNavLinks.map((item) => (
                 <Link
                   key={item.name}
@@ -78,6 +89,14 @@ const Layout: React.FC<LayoutProps> = ({
                   {item.name}
                 </Link>
               ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetUIPreferences}
+                className="text-xs"
+              >
+                Reset View
+              </Button>
             </nav>
 
             <div className="flex items-center space-x-3">

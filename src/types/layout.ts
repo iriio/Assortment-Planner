@@ -1,4 +1,4 @@
-export type LayoutViewOption = "grid" | "list" | "table";
+export type LayoutViewOption = "standard" | "compactList" | "wideView";
 
 export interface LayoutConfig {
   containerClasses: string;
