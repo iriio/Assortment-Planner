@@ -215,6 +215,9 @@ const CompositionView: React.FC<CompositionViewProps> = ({
 
   // Get all products across all projects
   const allProducts = useMemo(() => {
+    if (!linePlan?.categories) {
+      return [];
+    }
     return linePlan.categories.flatMap((category) =>
       category.plannedStyles.map((style) => ({
         ...style,
@@ -222,10 +225,13 @@ const CompositionView: React.FC<CompositionViewProps> = ({
         projectId: category.id,
       }))
     );
-  }, [linePlan.categories]);
+  }, [linePlan?.categories]);
 
   // Filter products based on current filters
   const filteredProducts = useMemo(() => {
+    if (!allProducts.length) {
+      return [];
+    }
     return allProducts.filter((product) => {
       // Category filter (include)
       if (

@@ -79,6 +79,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ProgramWideView } from "../components/views/ProgramWideView";
 import { Separator } from "@/components/ui/separator";
+import CompositionView from "../components/views/CompositionView";
 
 type ViewMode = "overview" | "category" | "composition";
 
@@ -195,18 +196,30 @@ const ProgramOverviewPage = ({
   ) as React.MutableRefObject<HTMLButtonElement>;
 
   // FILTER STATE: Composition view filters with localStorage persistence
-  const [filters, setFilters] = useState<FilterState>(
-    () =>
-      uiPreferences.lastActiveFilters || {
-        categories: [],
-        excludeCategories: [],
-        tags: [],
-        excludeTags: [],
-        priceRange: { min: 0, max: 1000 },
-        marginRange: { min: 0, max: 100 },
-        status: [],
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const savedFilters = localStorage.getItem("compositionFilters");
+    if (savedFilters) {
+      try {
+        return JSON.parse(savedFilters);
+      } catch (e) {
+        console.error("Error parsing saved filters:", e);
       }
-  );
+    }
+    return {
+      categories: [],
+      excludeCategories: [],
+      tags: [],
+      excludeTags: [],
+      priceRange: { min: 0, max: 1000 },
+      marginRange: { min: 0, max: 100 },
+      status: [],
+    };
+  });
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem("compositionFilters", JSON.stringify(filters));
+  }, [filters]);
 
   // FORM STATE: Program creation form fields
   const [programName, setProgramName] = useState("");
@@ -278,7 +291,10 @@ const ProgramOverviewPage = ({
   };
 
   const handleShowComposition = () => {
-    setViewMode("composition");
+    if (!currentLinePlan) {
+      return;
+    }
+    setViewMode(viewMode === "composition" ? "overview" : "composition");
     setSelectedCategoryId(null);
   };
 
@@ -817,37 +833,62 @@ const ProgramOverviewPage = ({
                       )}
                     </Button>
                   </div>
-                  <Separator orientation="vertical" className="h-12" />
+
+                  <Separator
+                    orientation="vertical"
+                    className="h-12 w-[1px] bg-border"
+                  />
 
                   <Breadcrumb className="pl-4">
                     <BreadcrumbList>
                       <BreadcrumbItem>
-                        <BreadcrumbLink href="/">Programs</BreadcrumbLink>
+                        <BreadcrumbLink
+                          onClick={() => {
+                            setViewMode("overview");
+                            setSelectedCategoryId(null);
+                          }}
+                          className="text-slate-500 hover:text-slate-700"
+                        >
+                          Programs
+                        </BreadcrumbLink>
                       </BreadcrumbItem>
                       <BreadcrumbSeparator />
                       <BreadcrumbItem>
-                        {selectedCategoryId ? (
-                          <BreadcrumbLink onClick={handleBackToOverview}>
-                            {currentLinePlan?.name || "Untitled Program"}
-                          </BreadcrumbLink>
+                        {viewMode === "composition" ? (
+                          <>
+                            <BreadcrumbLink
+                              onClick={() => {
+                                setViewMode("overview");
+                                setSelectedCategoryId(null);
+                              }}
+                              className="text-slate-500 hover:text-slate-700"
+                            >
+                              {currentLinePlan?.name}
+                            </BreadcrumbLink>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbPage>Composition View</BreadcrumbPage>
+                          </>
+                        ) : selectedCategoryId ? (
+                          <>
+                            <BreadcrumbLink
+                              onClick={() => setSelectedCategoryId(null)}
+                              className="text-slate-500 hover:text-slate-700"
+                            >
+                              {currentLinePlan?.name}
+                            </BreadcrumbLink>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbPage>
+                              {currentLinePlan?.categories.find(
+                                (c) => c.id === selectedCategoryId
+                              )?.name || "Category"}
+                            </BreadcrumbPage>
+                          </>
                         ) : (
                           <BreadcrumbPage>
-                            {currentLinePlan?.name || "Untitled Program"}
+                            {currentLinePlan?.name}
                           </BreadcrumbPage>
                         )}
                       </BreadcrumbItem>
-                      {selectedCategoryId && (
-                        <>
-                          <BreadcrumbSeparator />
-                          <BreadcrumbItem>
-                            <BreadcrumbPage>
-                              {currentLinePlan?.categories.find(
-                                (cat) => cat.id === selectedCategoryId
-                              )?.name || "Category"}
-                            </BreadcrumbPage>
-                          </BreadcrumbItem>
-                        </>
-                      )}
                     </BreadcrumbList>
                   </Breadcrumb>
                 </div>
@@ -1262,7 +1303,28 @@ const ProgramOverviewPage = ({
                     <div className="flex gap-5 p-5">
                       <div className="flex-1">
                         <div className="space-y-5">
-                          {renderProductLinesSectionContent(currentLayout)}
+                          {viewMode === "composition" ? (
+                            currentLinePlan ? (
+                              <CompositionView
+                                linePlan={currentLinePlan}
+                                onBack={handleBackToOverview}
+                                onProductClick={(projectId) => {
+                                  setSelectedCategoryId(projectId);
+                                  // Handle product selection if needed
+                                }}
+                                filters={filters}
+                                onFiltersChange={setFilters}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-full">
+                                <p className="text-slate-500">
+                                  No line plan selected
+                                </p>
+                              </div>
+                            )
+                          ) : (
+                            renderProductLinesSectionContent(currentLayout)
+                          )}
                         </div>
                       </div>
                       <div
