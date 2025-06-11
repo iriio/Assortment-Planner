@@ -3,7 +3,7 @@ import {
   LinePlanCategory,
   MasterComponent,
   StyleComponentUsage,
-} from "../types";
+} from "@/types";
 
 export const calculateStyleCost = (
   components: StyleComponentUsage[],

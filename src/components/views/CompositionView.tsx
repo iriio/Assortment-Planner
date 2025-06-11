@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from "react";
-import { LinePlan, ProductTag } from "../../types";
-import { productTagLibrary } from "../../data/index";
+import { LinePlan, ProductTag } from "@/types";
+import { productTagsData } from "@/data";
 import {
   ChevronLeftIcon,
   CollectionIcon,
   FunnelIcon,
   XMarkIcon,
+  TagIcon,
 } from "../common/icons";
 import Modal from "../modals/Modal";
 import TagChip from "../common/TagChip";
@@ -347,13 +348,13 @@ const CompositionView: React.FC<CompositionViewProps> = ({
 
   // Group tags by category
   const tagsByCategory = useMemo(() => {
-    return productTagLibrary.reduce((acc, tag) => {
+    return productTagsData.reduce<Record<string, ProductTag[]>>((acc, tag) => {
       if (!acc[tag.category]) {
         acc[tag.category] = [];
       }
       acc[tag.category].push(tag);
       return acc;
-    }, {} as Record<string, ProductTag[]>);
+    }, {});
   }, []);
 
   return (
@@ -484,13 +485,16 @@ const CompositionView: React.FC<CompositionViewProps> = ({
 
                 {/* Tag Filters */}
                 {filters.tags.map((tagId) => {
-                  const tag = productTagLibrary.find((t) => t.id === tagId);
+                  const tag = productTagsData.find(
+                    (t: ProductTag) => t.id === tagId
+                  );
                   return tag ? (
                     <div
-                      key={`tag-${tagId}`}
-                      className="relative inline-flex items-center"
+                      key={tagId}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-sm"
                     >
-                      <TagChip tag={tag} size="sm" />
+                      <TagIcon className="w-4 h-4" />
+                      <span>{tag.name}</span>
                       <button
                         onClick={() => {
                           const newTags = filters.tags.filter(
@@ -499,10 +503,9 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                           onFiltersChange &&
                             onFiltersChange({ ...filters, tags: newTags });
                         }}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs transition-colors"
-                        title="Remove filter"
+                        className="text-gray-500 hover:text-gray-700"
                       >
-                        <XMarkIcon className="w-2.5 h-2.5" />
+                        <XMarkIcon className="w-4 h-4" />
                       </button>
                     </div>
                   ) : null;
@@ -510,13 +513,16 @@ const CompositionView: React.FC<CompositionViewProps> = ({
 
                 {/* Exclude Tag Filters */}
                 {filters.excludeTags.map((tagId) => {
-                  const tag = productTagLibrary.find((t) => t.id === tagId);
+                  const tag = productTagsData.find(
+                    (t: ProductTag) => t.id === tagId
+                  );
                   return tag ? (
                     <span
-                      key={`exclude-tag-${tagId}`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100/80 text-red-800 text-sm font-medium border border-red-200/50 rounded-md"
+                      key={tagId}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded-full text-sm"
                     >
-                      <span>Exclude: {tag.name}</span>
+                      <TagIcon className="w-4 h-4" />
+                      <span>{tag.name}</span>
                       <button
                         onClick={() => {
                           const newTags = filters.excludeTags.filter(
@@ -528,9 +534,9 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                               excludeTags: newTags,
                             });
                         }}
-                        className="hover:bg-red-200/80 p-1 rounded"
+                        className="text-red-500 hover:text-red-700"
                       >
-                        <XMarkIcon className="w-3 h-3" />
+                        <XMarkIcon className="w-4 h-4" />
                       </button>
                     </span>
                   ) : null;
@@ -963,15 +969,11 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                               {product.tags && product.tags.length > 0 && (
                                 <div className="flex flex-wrap gap-0.5">
                                   {product.tags.slice(0, 2).map((tagId) => {
-                                    const tag = productTagLibrary.find(
-                                      (t) => t.id === tagId
+                                    const tag = productTagsData.find(
+                                      (t: ProductTag) => t.id === tagId
                                     );
                                     return tag ? (
-                                      <TagChip
-                                        key={tagId}
-                                        tag={tag}
-                                        size="xs"
-                                      />
+                                      <TagChip key={tagId} tag={tag} />
                                     ) : null;
                                   })}
                                   {product.tags.length > 2 && (

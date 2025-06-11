@@ -1,5 +1,5 @@
 import React from "react";
-import { ProductTag } from "../../types";
+import { ProductTag } from "@/types";
 
 interface TagChipProps {
   tag: ProductTag;

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PlannedStyle, PlannedStyleStatus } from "../../types";
+import { PlannedStyle, PlannedStyleStatus } from "@/types";
 import Modal from "./Modal";
 
 interface StyleModalProps {

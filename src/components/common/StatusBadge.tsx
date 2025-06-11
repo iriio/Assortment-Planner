@@ -1,5 +1,5 @@
 import React from "react";
-import { PLMStatusStage } from "../../types";
+import { PLMStatusStage } from "@/types";
 import {
   getStatusDefinition,
   getAvailableStatusTransitions,
@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils";
 
 interface StatusBadgeProps {
   status: PLMStatusStage;

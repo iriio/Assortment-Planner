@@ -1,5 +1,5 @@
 import React from "react";
-import { PlannedStyle, StyleMetricViewOption } from "../../types";
+import { PlannedStyle, StyleMetricViewOption } from "@/types";
 import {
   ArrowUpRightIcon,
   ArrowDownLeftIcon,

@@ -39,7 +39,7 @@ import {
   PLMStatusStage,
   StyleMetricViewOption,
   LinePlan,
-} from "../types";
+} from "@/types";
 
 import {
   PlusCircleIcon,

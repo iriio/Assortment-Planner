@@ -7,8 +7,8 @@ import {
   PLMStatusStage,
   LinePlanCategory,
   ProjectCreationInput,
-} from "../types";
-import { LayoutViewOption } from "../types/layout";
+} from "@/types";
+import { LayoutViewOption } from "@/types/layout";
 import {
   CurrencyDollarIcon,
   ScaleIcon,
@@ -69,7 +69,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +80,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ProgramWideView } from "../components/views/ProgramWideView";
 import { Separator } from "@/components/ui/separator";
 import CompositionView from "../components/views/CompositionView";
+import { CategoryDetailView } from "../components/views/CategoryDetailView";
 
 type ViewMode = "overview" | "category" | "composition";
 
@@ -1322,6 +1323,67 @@ const ProgramOverviewPage = ({
                                 </p>
                               </div>
                             )
+                          ) : viewMode === "category" &&
+                            selectedCategoryId &&
+                            currentLinePlan ? (
+                            <CategoryDetailView
+                              category={
+                                currentLinePlan.categories.find(
+                                  (c) => c.id === selectedCategoryId
+                                )!
+                              }
+                              onUpdateStyle={(categoryId, style) => {
+                                setLinePlans((prevPlans) =>
+                                  prevPlans.map((plan) =>
+                                    plan.id === currentLinePlan.id
+                                      ? {
+                                          ...plan,
+                                          categories: plan.categories.map(
+                                            (cat) =>
+                                              cat.id === categoryId
+                                                ? {
+                                                    ...cat,
+                                                    plannedStyles:
+                                                      cat.plannedStyles.map(
+                                                        (s) =>
+                                                          s.id === style.id
+                                                            ? style
+                                                            : s
+                                                      ),
+                                                  }
+                                                : cat
+                                          ),
+                                        }
+                                      : plan
+                                  )
+                                );
+                              }}
+                              onAddStyle={(categoryId, style) => {
+                                setLinePlans((prevPlans) =>
+                                  prevPlans.map((plan) =>
+                                    plan.id === currentLinePlan.id
+                                      ? {
+                                          ...plan,
+                                          categories: plan.categories.map(
+                                            (cat) =>
+                                              cat.id === categoryId
+                                                ? {
+                                                    ...cat,
+                                                    plannedStyles: [
+                                                      ...cat.plannedStyles,
+                                                      style,
+                                                    ],
+                                                  }
+                                                : cat
+                                          ),
+                                        }
+                                      : plan
+                                  )
+                                );
+                              }}
+                              currentLayout={currentLayout}
+                              programName={currentLinePlan.name}
+                            />
                           ) : (
                             renderProductLinesSectionContent(currentLayout)
                           )}

@@ -26,7 +26,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import ProgramOverviewPage from "./pages/ProgramOverviewPage";
 import CategoryDetailPage from "./pages/CategoryDetailPage";
-import { initialLinePlan } from "./data";
+import { initialLinePlan } from "./data/index";
 import {
   PLMStatusStage,
   LinePlan,
@@ -36,7 +36,7 @@ import {
   GlobalMetricViewOption,
   CategoryMetricViewOption,
   StyleMetricViewOption,
-} from "./types";
+} from "@/types/index";
 import {
   saveLinePlans,
   loadLinePlans,

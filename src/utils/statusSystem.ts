@@ -1,4 +1,4 @@
-import { PLMStatusStage, LinePlan, LinePlanCategory } from "../types";
+import { PLMStatusStage, LinePlan, LinePlanCategory } from "@/types";
 
 interface StatusDefinition {
   label: string;

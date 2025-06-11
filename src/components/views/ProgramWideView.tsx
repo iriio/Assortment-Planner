@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { LinePlanCategory, PLMStatusStage, PlannedStyle } from "../../types";
+import { LinePlanCategory, PLMStatusStage, PlannedStyle } from "@/types";
 import { Input } from "@/components/ui/input";
-import StatusBadge from "../common/StatusBadge";
-import TagListDisplay from "../common/TagListDisplay";
-import { CollectionIcon } from "../common/icons";
-import { formatCurrency, formatPercentage } from "../../utils/formatters";
+import StatusBadge from "@/components/common/StatusBadge";
+import TagListDisplay from "@/components/common/TagListDisplay";
+import { CollectionIcon } from "@/components/common/icons";
+import { formatCurrency, formatPercentage } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import {
   DragDropContext,

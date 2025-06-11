@@ -1,4 +1,4 @@
-import { LayoutViewOption, LayoutConfig } from "../types/layout";
+import { LayoutViewOption, LayoutConfig } from "@/types/layout";
 
 export const getLayoutConfig = (layout: LayoutViewOption): LayoutConfig => {
   switch (layout) {

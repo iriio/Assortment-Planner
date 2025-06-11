@@ -24,7 +24,7 @@ import {
   getFilteredRowModel,
   Row,
 } from "@tanstack/react-table";
-import { LinePlanCategory, PLMStatusStage, PlannedStyle } from "../../types";
+import { LinePlanCategory, PLMStatusStage, PlannedStyle } from "@/types";
 import {
   Table,
   TableBody,
@@ -35,8 +35,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
-import StatusBadge from "../common/StatusBadge";
-import TagListDisplay from "../common/TagListDisplay";
+import StatusBadge from "@/components/common/StatusBadge";
+import TagListDisplay from "@/components/common/TagListDisplay";
 import {
   Select,
   SelectContent,
@@ -44,10 +44,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { calculateCategoryStatus } from "../../utils/statusSystem";
-import { formatCurrency, formatPercentage } from "../../utils/formatters";
+import { calculateCategoryStatus } from "@/utils/statusSystem";
+import { formatCurrency, formatPercentage } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
-import { SearchBar } from "../../components/ui/search-bar";
+import { SearchBar } from "@/components/ui/search-bar";
 
 /**
  * Props for the CompactListView component

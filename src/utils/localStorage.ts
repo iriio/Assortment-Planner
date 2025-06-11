@@ -2,7 +2,7 @@ import {
   LinePlan,
   CategoryMetricViewOption,
   StyleMetricViewOption,
-} from "../types";
+} from "@/types";
 
 // Storage keys
 const STORAGE_KEYS = {

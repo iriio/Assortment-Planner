@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { PLMStatusStage } from "../../types";
+import { PLMStatusStage } from "@/types";
 import { getStatusDefinition } from "../../utils/statusSystem";
 import { ChevronDownIcon, FunnelIcon } from "./icons";
 

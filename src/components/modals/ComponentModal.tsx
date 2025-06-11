@@ -1,9 +1,5 @@
 import React, { useState } from "react";
-import {
-  PlannedStyle,
-  StyleComponentUsage,
-  MasterComponent,
-} from "../../types";
+import { PlannedStyle, StyleComponentUsage, MasterComponent } from "@/types";
 import Modal from "./Modal";
 import { masterComponentsData } from "../../data";
 

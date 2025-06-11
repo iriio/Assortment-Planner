@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { ProductCatalogueItem } from "../../types";
+import { ProductCatalogueItem } from "@/types";
 import Modal from "./Modal";
 import { MagnifyingGlassIcon, PlusCircleIcon } from "../common/icons";
 

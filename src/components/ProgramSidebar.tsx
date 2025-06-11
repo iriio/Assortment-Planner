@@ -1,9 +1,9 @@
-import { cn } from "../../lib/utils";
+import { cn } from "@/utils";
 import { Plus as PlusIcon, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { SearchBar } from "../components/ui/search-bar";
+import { SearchBar } from "@/components/ui/search-bar";
 
 interface SearchResult {
   id: string;

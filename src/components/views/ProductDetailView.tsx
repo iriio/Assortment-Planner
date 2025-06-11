@@ -5,11 +5,11 @@ import {
   ChevronLeftIcon,
   TagIcon,
   PencilIcon,
-} from "../common/icons";
-import { PlannedStyle, ProductTag } from "../../types";
-import { productTagLibrary } from "../../data/index";
-import TagChip from "../common/TagChip";
-import ProductImagePlaceholder from "../common/ProductImagePlaceholder";
+} from "@/components/common/icons";
+import { PlannedStyle, ProductTag } from "@/types";
+import { productTagsData } from "@/data";
+import TagChip from "@/components/common/TagChip";
+import ProductImagePlaceholder from "@/components/common/ProductImagePlaceholder";
 
 const ProductDetailView: React.FC<{
   product: PlannedStyle;
@@ -25,14 +25,14 @@ const ProductDetailView: React.FC<{
 
   const getTagsForProduct = (): ProductTag[] => {
     if (!product.tags) return [];
-    return productTagLibrary.filter((tag: ProductTag) =>
+    return productTagsData.filter((tag: ProductTag) =>
       product.tags!.includes(tag.id)
     );
   };
 
   const getAvailableTags = (): ProductTag[] => {
     const currentTagIds = product.tags || [];
-    return productTagLibrary.filter(
+    return productTagsData.filter(
       (tag: ProductTag) => !currentTagIds.includes(tag.id)
     );
   };

@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { CollectionIcon, PencilIcon } from "../common/icons";
+import { CollectionIcon, PencilIcon } from "@/components/common/icons";
 import {
   LinePlanCategory,
   PlannedStyle,
   PLMStatusStage,
   PlannedStyleStatus,
-} from "../../types";
-import { LayoutViewOption } from "../../types/layout";
-import StyleModal from "../modals/StyleModal";
-import ComponentModal from "../modals/ComponentModal";
+} from "@/types";
+import { LayoutViewOption } from "@/types/layout";
+import StyleModal from "@/components/modals/StyleModal";
+import ComponentModal from "@/components/modals/ComponentModal";
 import ProductDetailView from "./ProductDetailView";
-import TagListDisplay from "../common/TagListDisplay";
-import StatusBadge from "../common/StatusBadge";
-import { calculateCategoryStatus } from "../../utils/statusSystem";
-import ProductImagePlaceholder from "../common/ProductImagePlaceholder";
+import TagListDisplay from "@/components/common/TagListDisplay";
+import StatusBadge from "@/components/common/StatusBadge";
+import { calculateCategoryStatus } from "@/utils/statusSystem";
+import ProductImagePlaceholder from "@/components/common/ProductImagePlaceholder";
 
 interface CategoryDetailViewProps {
   category: LinePlanCategory;

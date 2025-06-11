@@ -4,7 +4,7 @@ import {
   CategoryMetricViewOption,
   PLMStatusStage,
   ActiveTargetFilterType,
-} from "../../types";
+} from "@/types";
 import {
   ExclamationTriangleIcon,
   CheckBadgeIcon,
@@ -17,7 +17,7 @@ import StatusBadge from "../common/StatusBadge";
 import TagListDisplay from "../common/TagListDisplay";
 import ProductImagePlaceholder from "../common/ProductImagePlaceholder";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils";
 
 interface ProductLineCategoryCardProps {
   category: LinePlanCategory;

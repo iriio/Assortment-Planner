@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
-import { LinePlanCategory } from "../../types";
+import { LinePlanCategory } from "@/types";
 
 interface CategoryTargetsModalProps {
   isOpen: boolean;
