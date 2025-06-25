@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { LinePlan, ProductTag } from "@/types";
+import { LinePlan, ProductTag, PLMStatusStage } from "@/types";
 import { productTagsData } from "@/data";
 import {
   ChevronLeftIcon,
@@ -9,7 +9,18 @@ import {
   TagIcon,
 } from "../common/icons";
 import Modal from "../modals/Modal";
-import TagChip from "../common/TagChip";
+import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import TagListDisplay from "../common/TagListDisplay";
+import StatusBadge from "../common/StatusBadge";
 
 interface CompositionViewProps {
   linePlan: LinePlan;
@@ -357,6 +368,226 @@ const CompositionView: React.FC<CompositionViewProps> = ({
     }, {});
   }, []);
 
+  const [groupByPrimary, setGroupByPrimary] = useState(false);
+  const [primaryAttr, setPrimaryAttr] = useState("projectName");
+  const [secondaryAttr, setSecondaryAttr] = useState("none");
+
+  const attributeOptions = [
+    { value: "projectName", label: "Project Name" },
+    { value: "sellingPrice", label: "Selling Price" },
+    { value: "margin", label: "Margin" },
+    { value: "status", label: "Status" },
+  ];
+
+  const attributeLabel = (value: string) => {
+    const found = attributeOptions.find((opt) => opt.value === value);
+    return found ? found.label : value;
+  };
+
+  // Simple color palette for attribute values
+  const colorPalette = [
+    "bg-emerald-500",
+    "bg-blue-500",
+    "bg-purple-500",
+    "bg-pink-500",
+    "bg-orange-500",
+    "bg-teal-500",
+    "bg-indigo-500",
+    "bg-cyan-500",
+    "bg-red-500",
+    "bg-amber-500",
+    "bg-lime-500",
+    "bg-rose-500",
+    "bg-violet-500",
+    "bg-sky-500",
+    "bg-green-500",
+    "bg-yellow-500",
+    "bg-fuchsia-500",
+    "bg-slate-500",
+    "bg-stone-500",
+    "bg-zinc-500",
+  ];
+
+  // Mock data for demonstration
+  const mockAttributeValues: { [key: string]: string[] } = {
+    projectName: ["Alpha", "Beta", "Gamma", "Delta"],
+    sellingPrice: ["Low", "Mid", "High"],
+    margin: ["Low", "Medium", "High"],
+    status: ["Active", "Inactive", "Pending"],
+  };
+  // Generate mock composition data (proportions add to 1)
+  const mockData = (primary: string, secondary?: string) => {
+    const primVals: string[] = mockAttributeValues[primary] || [];
+    if (!secondary) {
+      // Single attribute: flat proportions
+      return primVals.map((v: string, i: number) => ({
+        value: v,
+        percent: 1 / primVals.length,
+        color: colorPalette[i % colorPalette.length],
+      }));
+    }
+    // Two attributes: nested proportions
+    const secVals: string[] = mockAttributeValues[secondary] || [];
+    return primVals.map((pv: string, i: number) => ({
+      value: pv,
+      percent: 1 / primVals.length,
+      color: colorPalette[i % colorPalette.length],
+      breakdown: secVals.map((sv: string, j: number) => ({
+        value: sv,
+        percent: 1 / secVals.length,
+        color: colorPalette[j % colorPalette.length],
+      })),
+    }));
+  };
+
+  // Chart rendering logic
+  function renderCompositionChart({
+    groupByPrimary,
+    primaryAttr,
+    secondaryAttr,
+  }: {
+    groupByPrimary: boolean;
+    primaryAttr: string;
+    secondaryAttr: string;
+  }) {
+    if (!primaryAttr) return null;
+    if (secondaryAttr === "none") {
+      // Single bar for primary attribute
+      const data = mockData(primaryAttr);
+      return (
+        <div className="flex w-full h-4 rounded overflow-hidden">
+          {data.map(
+            (seg: { value: string; percent: number; color: string }) => (
+              <div
+                key={seg.value}
+                className={seg.color}
+                style={{ width: `${seg.percent * 100}%` }}
+                title={seg.value}
+              />
+            )
+          )}
+        </div>
+      );
+    }
+    if (!groupByPrimary) {
+      // Two independent stacked bars
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex w-full h-4 rounded overflow-hidden">
+            {mockData(primaryAttr).map(
+              (seg: { value: string; percent: number; color: string }) => (
+                <div
+                  key={seg.value}
+                  className={seg.color}
+                  style={{ width: `${seg.percent * 100}%` }}
+                  title={seg.value}
+                />
+              )
+            )}
+          </div>
+          <div className="flex w-full h-4 rounded overflow-hidden">
+            {mockData(secondaryAttr).map(
+              (seg: { value: string; percent: number; color: string }) => (
+                <div
+                  key={seg.value}
+                  className={seg.color}
+                  style={{ width: `${seg.percent * 100}%` }}
+                  title={seg.value}
+                />
+              )
+            )}
+          </div>
+        </div>
+      );
+    }
+    // Pivot view: group by primary, breakdown by secondary
+    const data = mockData(primaryAttr, secondaryAttr) as {
+      value: string;
+      percent: number;
+      color: string;
+      breakdown: { value: string; percent: number; color: string }[];
+    }[];
+    const top2 = data.slice(0, 2);
+    const other = data.length > 2 ? data.slice(2) : [];
+    return (
+      <div className="flex flex-col gap-2">
+        {top2.map((group) => (
+          <div key={group.value} className="flex items-center gap-2">
+            <span className="w-24 text-xs text-slate-700 truncate">
+              {group.value}
+            </span>
+            <div className="flex-1 flex h-4 rounded overflow-hidden">
+              {group.breakdown.map(
+                (seg: { value: string; percent: number; color: string }) => (
+                  <div
+                    key={seg.value}
+                    className={seg.color}
+                    style={{ width: `${seg.percent * 100}%` }}
+                    title={seg.value}
+                  />
+                )
+              )}
+            </div>
+          </div>
+        ))}
+        {other.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="w-24 text-xs text-slate-700 truncate">Other</span>
+            <div className="flex-1 flex h-4 rounded overflow-hidden">
+              {(mockAttributeValues[secondaryAttr] as string[]).map(
+                (sv: string, j: number) => (
+                  <div
+                    key={sv}
+                    className={colorPalette[j % colorPalette.length]}
+                    style={{
+                      width: `${
+                        100 /
+                        (mockAttributeValues[secondaryAttr] as string[]).length
+                      }%`,
+                    }}
+                    title={sv}
+                  />
+                )
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Legend rendering logic
+  function legendItems({
+    groupByPrimary,
+    primaryAttr,
+    secondaryAttr,
+  }: {
+    groupByPrimary: boolean;
+    primaryAttr: string;
+    secondaryAttr: string;
+  }) {
+    if (secondaryAttr === "none" || (secondaryAttr && !groupByPrimary)) {
+      // Show legend for both bars if two, else just primary
+      const attrs = [primaryAttr];
+      if (secondaryAttr !== "none") attrs.push(secondaryAttr);
+      return attrs.flatMap((attr: string) =>
+        (mockAttributeValues[attr] as string[]).map((v: string, i: number) => ({
+          value: `${attr}-${v}`,
+          label: `${attributeLabel(attr)}: ${v}`,
+          color: colorPalette[i % colorPalette.length],
+        }))
+      );
+    }
+    // Grouped: legend for secondary attribute
+    return (mockAttributeValues[secondaryAttr] as string[]).map(
+      (v: string, i: number) => ({
+        value: v,
+        label: v,
+        color: colorPalette[i % colorPalette.length],
+      })
+    );
+  }
+
   return (
     <div className="space-y-6 h-full">
       {/* Header */}
@@ -421,6 +652,107 @@ const CompositionView: React.FC<CompositionViewProps> = ({
               </span>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* --- Responsive Composition Viewer Controls --- */}
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-end md:space-x-6 gap-4">
+          {/* Group By Toggle */}
+          <div className="flex flex-col">
+            <Label htmlFor="group-by-toggle" className="mb-1">
+              Group by:
+            </Label>
+            <ToggleGroup
+              type="single"
+              value={groupByPrimary ? "on" : "off"}
+              onValueChange={(v) => setGroupByPrimary(v === "on")}
+              id="group-by-toggle"
+              className="w-32"
+            >
+              <ToggleGroupItem value="off">Off</ToggleGroupItem>
+              <ToggleGroupItem value="on">Primary</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          {/* Primary Attribute Dropdown */}
+          <div className="flex flex-col flex-1 min-w-[180px]">
+            <Label htmlFor="primary-attribute" className="mb-1">
+              Primary Attribute
+            </Label>
+            <Select value={primaryAttr} onValueChange={setPrimaryAttr}>
+              <SelectTrigger id="primary-attribute">
+                <SelectValue placeholder="Select attribute" />
+              </SelectTrigger>
+              <SelectContent>
+                {attributeOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Secondary Attribute Dropdown */}
+          <div className="flex flex-col flex-1 min-w-[180px]">
+            <Label htmlFor="secondary-attribute" className="mb-1">
+              Secondary Attribute
+            </Label>
+            <Select value={secondaryAttr} onValueChange={setSecondaryAttr}>
+              <SelectTrigger id="secondary-attribute">
+                <SelectValue placeholder="Add second attribute" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {attributeOptions
+                  .filter((opt) => opt.value !== primaryAttr)
+                  .map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* --- Dynamic Output Area --- */}
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {groupByPrimary && secondaryAttr
+                  ? `Composition by ${attributeLabel(primaryAttr)} (grouped)`
+                  : secondaryAttr
+                  ? `Composition: ${attributeLabel(
+                      primaryAttr
+                    )} & ${attributeLabel(secondaryAttr)}`
+                  : `Composition: ${attributeLabel(primaryAttr)}`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Chart rendering logic */}
+              {renderCompositionChart({
+                groupByPrimary,
+                primaryAttr,
+                secondaryAttr,
+              })}
+            </CardContent>
+          </Card>
+          {/* Legend */}
+          <div className="flex gap-2 mt-4 flex-wrap">
+            {legendItems({
+              groupByPrimary,
+              primaryAttr,
+              secondaryAttr,
+            }).map((item) => (
+              <div key={item.value} className="flex items-center gap-1 text-xs">
+                <span
+                  className={`inline-block w-3 h-3 rounded-full ${item.color}`}
+                />
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -508,37 +840,6 @@ const CompositionView: React.FC<CompositionViewProps> = ({
                         <XMarkIcon className="w-4 h-4" />
                       </button>
                     </div>
-                  ) : null;
-                })}
-
-                {/* Exclude Tag Filters */}
-                {filters.excludeTags.map((tagId) => {
-                  const tag = productTagsData.find(
-                    (t: ProductTag) => t.id === tagId
-                  );
-                  return tag ? (
-                    <span
-                      key={tagId}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 rounded-full text-sm"
-                    >
-                      <TagIcon className="w-4 h-4" />
-                      <span>{tag.name}</span>
-                      <button
-                        onClick={() => {
-                          const newTags = filters.excludeTags.filter(
-                            (t) => t !== tagId
-                          );
-                          onFiltersChange &&
-                            onFiltersChange({
-                              ...filters,
-                              excludeTags: newTags,
-                            });
-                        }}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <XMarkIcon className="w-4 h-4" />
-                      </button>
-                    </span>
                   ) : null;
                 })}
 
@@ -880,141 +1181,6 @@ const CompositionView: React.FC<CompositionViewProps> = ({
         )}
       </div>
 
-      {/* Projects Card Container */}
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-6">Projects</h3>
-        <div className="space-y-6">
-          {linePlan.categories.map((category, index) => {
-            const projectProducts =
-              productsByProject[category.id]?.products || [];
-            const totalProjectProducts = allProducts.filter(
-              (p) => p.projectId === category.id
-            ).length;
-            const projectColor = getProjectColor(index);
-
-            return (
-              <div
-                key={category.id}
-                className={`border-l-[3px] ${projectColor.border} pl-4`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h4
-                    className={`text-base font-semibold ${projectColor.text}`}
-                  >
-                    {category.name}
-                  </h4>
-                  <div className="text-sm text-slate-600">
-                    <span className="font-medium text-slate-900">
-                      {projectProducts.length}
-                    </span>{" "}
-                    of {totalProjectProducts} products
-                    {projectProducts.length !== totalProjectProducts && (
-                      <span
-                        className={`ml-2 px-2 py-0.5 ${projectColor.light} rounded text-xs font-medium ${projectColor.text}`}
-                      >
-                        {Math.round(
-                          (projectProducts.length / totalProjectProducts) * 100
-                        )}
-                        % match
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {projectProducts.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <div
-                      className="flex space-x-3 pb-2"
-                      style={{ minWidth: "max-content" }}
-                    >
-                      {projectProducts.map((product) => (
-                        <div
-                          key={product.id}
-                          className="flex-shrink-0 w-48 p-3 border border-slate-200 rounded hover:shadow-sm transition-shadow cursor-pointer bg-slate-50/30 hover:bg-white"
-                          onClick={() =>
-                            onProductClick(product.projectId, product.id)
-                          }
-                        >
-                          <div className="flex items-start space-x-2">
-                            <div className="w-12 h-12 bg-slate-100 rounded overflow-hidden flex-shrink-0">
-                              {product.imageUrl ? (
-                                <img
-                                  src={product.imageUrl}
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <CollectionIcon className="w-4 h-4 text-slate-300" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h5 className="font-medium text-slate-900 text-xs leading-tight mb-1 line-clamp-2">
-                                {product.name}
-                              </h5>
-                              <div className="flex items-center space-x-2 text-xs text-slate-600 mb-1">
-                                <span className="font-medium">
-                                  ${product.sellingPrice}
-                                </span>
-                                <span>
-                                  {(product.margin * 100).toFixed(1)}%
-                                </span>
-                              </div>
-                              <div className="mb-1">
-                                <span className="px-1.5 py-0.5 bg-slate-200 rounded text-xs">
-                                  {product.status}
-                                </span>
-                              </div>
-                              {product.tags && product.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-0.5">
-                                  {product.tags.slice(0, 2).map((tagId) => {
-                                    const tag = productTagsData.find(
-                                      (t: ProductTag) => t.id === tagId
-                                    );
-                                    return tag ? (
-                                      <TagChip key={tagId} tag={tag} />
-                                    ) : null;
-                                  })}
-                                  {product.tags.length > 2 && (
-                                    <span className="text-xs text-slate-400">
-                                      +{product.tags.length - 2}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-slate-500">
-                    <CollectionIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <p className="text-sm">
-                      No products match the current filters in this project
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {Object.keys(productsByProject).length === 0 && (
-            <div className="text-center py-16">
-              <CollectionIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h4 className="text-lg font-medium text-slate-700 mb-2">
-                No products found
-              </h4>
-              <p className="text-sm text-slate-500">
-                Try adjusting your filters to see more products.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Filter Modal */}
       <Modal
         isOpen={isFilterModalOpen}
@@ -1307,6 +1473,106 @@ const CompositionView: React.FC<CompositionViewProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Products Grid Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-slate-800">Products</h3>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-slate-600">
+              {totalFilteredCount} of {totalProductCount} products
+            </span>
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Object.entries(productsByProject).map(
+            (
+              [projectId, project]: [
+                string,
+                { projectName: string; products: typeof filteredProducts }
+              ],
+              index: number
+            ) => (
+              <div key={projectId} className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      getProjectColor(index).bg
+                    }`}
+                  />
+                  <h4 className="text-sm font-medium text-slate-700">
+                    {project.projectName}
+                  </h4>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {project.products.map(
+                    (product: (typeof filteredProducts)[0]) => (
+                      <div
+                        key={product.id}
+                        onClick={() => onProductClick(projectId, product.id)}
+                        className="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow cursor-pointer"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-16 h-16 bg-slate-100 rounded overflow-hidden flex-shrink-0">
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <CollectionIcon className="w-6 h-6 text-slate-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5
+                              className="text-sm font-medium text-slate-800 truncate"
+                              title={product.name}
+                            >
+                              {product.name}
+                            </h5>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {product.color || "N/A"}
+                            </p>
+                            <div className="mt-2">
+                              <TagListDisplay
+                                tagIds={product.tags}
+                                size="xs"
+                                itemType="product"
+                                maxVisibleTags={2}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                              <div className="text-xs">
+                                <div className="text-sm font-medium text-slate-700">
+                                  {(product.margin * 100).toFixed(1)}% MRG
+                                </div>
+                                <div className="text-slate-500">
+                                  ${product.sellingPrice.toFixed(0)} RSP
+                                </div>
+                              </div>
+                              <StatusBadge
+                                status={
+                                  product.plmStatus || PLMStatusStage.BRIEFING
+                                }
+                                size="sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -3,7 +3,17 @@ import {
   LinePlanCategory,
   MasterComponent,
   StyleComponentUsage,
+  ProductCatalogueItem,
+  PlannedStyleStatus,
+  PLMStatusStage,
 } from "@/types";
+
+export const generateId = (): string => {
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
+};
 
 export const calculateStyleCost = (
   components: StyleComponentUsage[],
@@ -58,6 +68,39 @@ export const calculateCategoryAchievedMargin = (
   return (totalRevenue - totalCost) / totalRevenue;
 };
 
-export const generateId = (): string => {
-  return Math.random().toString(36).substr(2, 9);
+export const createPlannedStyleFromCatalogue = (
+  item: ProductCatalogueItem,
+  overrides: Partial<PlannedStyle> = {}
+): PlannedStyle => {
+  return {
+    id: item.id,
+    name: item.name,
+    color: (item.color || []).join(", ") || "Assorted",
+    sellingPrice: item.sellingPrice,
+    costPrice: item.costPrice,
+    margin: item.margin,
+    status: PlannedStyleStatus.ACTIVE,
+    plmStatus: PLMStatusStage.PLANNING,
+    imageUrl: item.imageUrl,
+    components: item.components,
+    tags: item.tags,
+    ...overrides,
+  };
+};
+
+// Convenience wrapper: look up by ID or name instead of passing the whole object.
+export const createPlannedStyleFromCatalogueById = (
+  identifier: string, // can be catalogue id or exact name
+  catalogue: ProductCatalogueItem[],
+  overrides: Partial<PlannedStyle> = {}
+): PlannedStyle => {
+  const found = catalogue.find(
+    (c) => c.id === identifier || c.name === identifier
+  );
+
+  if (!found) {
+    throw new Error(`Catalogue item '${identifier}' not found`);
+  }
+
+  return createPlannedStyleFromCatalogue(found, overrides);
 };

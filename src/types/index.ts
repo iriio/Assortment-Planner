@@ -60,12 +60,26 @@ export interface PlannedStyle {
   costPrice: number;
   margin: number;
   status: PlannedStyleStatus;
-  plmStatus: PLMStatusStage; // New PLM status field
+  plmStatus: PLMStatusStage;
   imageUrl?: string;
   projectedSellIn?: number;
   projectedSellThrough?: number;
   components?: StyleComponentUsage[];
   tags?: string[]; // Array of tag IDs
+  fitType?: string; // e.g., "Oversized", "Slim", "Relaxed"
+  occasion?: string; // e.g., "Weekend", "Work", "Holiday"
+  targetMetrics?: {
+    margin?: number;
+    revenue?: number;
+    sellThrough?: number;
+    sellIn?: number;
+  };
+  currentMetrics?: {
+    margin?: number;
+    revenue?: number;
+    sellThrough?: number;
+    sellIn?: number;
+  };
 }
 
 export interface LinePlanCategory {
@@ -73,11 +87,18 @@ export interface LinePlanCategory {
   name: string;
   plannedStyles: PlannedStyle[];
   targetVolume: number;
-  plmStatus?: PLMStatusStage; // New PLM status field (optional, derived from children)
+  plmStatus?: PLMStatusStage;
   targetMetrics?: {
     margin?: number;
     revenue?: number;
     sellThrough?: number;
+    sellIn?: number;
+  };
+  currentMetrics?: {
+    margin?: number;
+    revenue?: number;
+    sellThrough?: number;
+    sellIn?: number;
   };
 }
 
@@ -103,6 +124,13 @@ export interface ProductCatalogueItem {
   imageUrl: string;
   components: StyleComponentUsage[]; // To know what it was made of
   tags?: string[]; // Array of tag IDs
+  line: string;
+  color: string[];
+  availableSizes: string[];
+  buyer: string[];
+  dateAdded: string;
+  unitsSold: number;
+  fabric: string;
 }
 
 export type Page = "overview" | "category" | "catalogue";
@@ -147,4 +175,163 @@ export type ActiveTargetFilterType =
 export interface ActiveTargetFilter {
   type: ActiveTargetFilterType;
   displayName: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  color: string;
+  sellingPrice: number;
+  costPrice: number;
+  margin: number;
+  status: PLMStatusStage;
+  imageUrl?: string;
+  sellThrough?: number;
+  fitType?: string;
+  occasion?: string;
+  tags?: string[];
+}
+
+// Vendor Management Types
+export interface Vendor {
+  id: string;
+  name: string;
+  contact: {
+    email: string;
+    phone?: string;
+    contactPerson: string;
+  };
+  categories: string[]; // Categories this vendor specializes in
+  location: string;
+  rating: number; // 1-5 star rating
+  paymentTerms: string;
+  leadTime: number; // in days
+  minimumOrderQuantity: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// RFQ Types
+export enum RFQStatus {
+  DRAFT = "draft",
+  SENT = "sent",
+  IN_REVIEW = "in_review",
+  RESPONDED = "responded",
+  ACCEPTED = "accepted",
+  DECLINED = "declined",
+  EXPIRED = "expired",
+}
+
+export interface RFQItem {
+  id: string;
+  styleId: string;
+  styleName: string;
+  categoryId: string;
+  categoryName: string;
+  quantity: number;
+  targetCost: number;
+  specifications: string;
+  imageUrl?: string;
+  components?: StyleComponentUsage[];
+}
+
+export interface RFQ {
+  id: string;
+  rfqNumber: string;
+  title: string;
+  description: string;
+  status: RFQStatus;
+  createdBy: string;
+  createdAt: string;
+  dueDate: string;
+  linePlanId: string;
+  linePlanName: string;
+  items: RFQItem[];
+  vendorIds: string[]; // Vendors this RFQ was sent to
+  totalTargetValue: number;
+  currency: string;
+  attachments?: string[];
+}
+
+// Quote Types
+export interface QuoteItem {
+  rfqItemId: string;
+  unitCost: number;
+  minimumOrderQuantity: number;
+  leadTime: number; // in days
+  notes?: string;
+  alternativeOptions?: {
+    description: string;
+    unitCost: number;
+    leadTime: number;
+  }[];
+}
+
+export interface Quote {
+  id: string;
+  rfqId: string;
+  vendorId: string;
+  vendorName: string;
+  quoteNumber: string;
+  status: "pending" | "submitted" | "accepted" | "rejected";
+  submittedAt?: string;
+  expiryDate: string;
+  items: QuoteItem[];
+  totalValue: number;
+  currency: string;
+  paymentTerms: string;
+  deliveryTerms: string;
+  validityPeriod: number; // in days
+  notes?: string;
+  attachments?: string[];
+}
+
+// Costing Analysis Types
+export interface CostingAnalysis {
+  id: string;
+  linePlanId: string;
+  styleId: string;
+  styleName: string;
+  currentCost: number;
+  targetCost: number;
+  bestQuoteCost?: number;
+  bestVendorId?: string;
+  costVariance: number; // percentage difference from target
+  marginImpact: number; // impact on margin percentage
+  recommendedAction: "accept" | "negotiate" | "reject" | "redesign";
+  quotes: Quote[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Cost Adjustment Types
+export interface CostAdjustment {
+  id: string;
+  styleId: string;
+  categoryId: string;
+  linePlanId: string;
+  oldCost: number;
+  newCost: number;
+  reason: string;
+  quoteId?: string; // If based on a quote
+  vendorId?: string;
+  adjustedBy: string;
+  adjustedAt: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+  approvedBy?: string;
+  approvedAt?: string;
+}
+
+// Costing Workflow State
+export interface CostingWorkflowState {
+  activeRFQs: RFQ[];
+  pendingQuotes: Quote[];
+  costingAnalyses: CostingAnalysis[];
+  recentAdjustments: CostAdjustment[];
+  vendors: Vendor[];
+  workflowStep:
+    | "rfq_creation"
+    | "quote_collection"
+    | "cost_analysis"
+    | "adjustment";
 }

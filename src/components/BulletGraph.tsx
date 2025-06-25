@@ -37,23 +37,23 @@ export const BulletGraph: React.FC<BulletGraphProps> = ({
     >
       {/* Performance zones */}
       <div className="absolute inset-0 w-full h-full">
-        <div className="absolute inset-0 w-full h-full bg-gray-100" />{" "}
+        <div className="absolute inset-0 w-full h-full bg-gray-50" />
         {/* Under zone */}
         <div
-          className="absolute inset-0 h-full bg-gray-200"
+          className="absolute inset-0 h-full bg-gray-100/80"
           style={{ width: `${underZone}%` }}
-        />{" "}
+        />
         {/* Near zone */}
         <div
-          className="absolute inset-0 h-full bg-gray-300"
+          className="absolute inset-0 h-full bg-gray-200/80"
           style={{ width: `${nearZone}%` }}
-        />{" "}
+        />
         {/* Over zone */}
       </div>
 
       {/* Main bar (current value) */}
       <div
-        className={`absolute left-0 top-1/4 ${barColor} rounded-sm`}
+        className={`absolute left-0 top-1/4 ${barColor} rounded-sm shadow-sm`}
         style={{
           width: `${currentPos}%`,
           height: "50%",
@@ -64,7 +64,7 @@ export const BulletGraph: React.FC<BulletGraphProps> = ({
       {/* Target marker */}
       {showTargetMarker && (
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-black"
+          className="absolute top-0 bottom-0 w-0.5 bg-black/40 shadow-sm"
           style={{
             left: `calc(${targetPos}% - 1px)`,
             transition: "left 0.4s cubic-bezier(.4,1,.4,1)",

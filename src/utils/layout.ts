@@ -14,6 +14,12 @@ export const getLayoutConfig = (layout: LayoutViewOption): LayoutConfig => {
         cardDisplayMode: "list",
       };
     case "wideView":
+    case "pivotTable":
+      return {
+        containerClasses:
+          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start auto-rows-auto",
+        cardDisplayMode: "grid",
+      };
     default:
       return {
         containerClasses:

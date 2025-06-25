@@ -1,15 +1,12 @@
-import React, { useState } from "react";
-import {
-  PlusIcon,
-  XMarkIcon,
-  ChevronLeftIcon,
-  TagIcon,
-  PencilIcon,
-} from "@/components/common/icons";
+import React, { useEffect } from "react";
+import { ChevronLeftIcon, PencilIcon } from "@/components/common/icons";
 import { PlannedStyle, ProductTag } from "@/types";
 import { productTagsData } from "@/data";
-import TagChip from "@/components/common/TagChip";
+
 import ProductImagePlaceholder from "@/components/common/ProductImagePlaceholder";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ProductDetailView: React.FC<{
   product: PlannedStyle;
@@ -18,10 +15,20 @@ const ProductDetailView: React.FC<{
   categoryName: string;
   programName: string;
 }> = ({ product, onBack, onUpdateProduct, categoryName }) => {
-  const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
-  const [selectedTagCategory, setSelectedTagCategory] = useState<string | null>(
-    null
-  );
+  // Add debug logging for component mount
+  useEffect(() => {
+    console.log("ProductDetailView mounted with product:", product.id);
+    return () => {
+      console.log("ProductDetailView unmounted");
+    };
+  }, [product.id]);
+
+  const handleBackClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Back button clicked");
+    onBack();
+  };
 
   const getTagsForProduct = (): ProductTag[] => {
     if (!product.tags) return [];
@@ -70,258 +77,198 @@ const ProductDetailView: React.FC<{
   const availableTagsByCategory = getTagsByCategory(availableTags);
 
   return (
-    <div className="h-full p-6 min-h-0">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 h-full">
-        <div className="grid grid-cols-12 gap-0 h-full divide-x-2 divide-slate-200">
+    <div className="h-full min-h-0 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={handleBackClick}
+            className="flex items-center text-sm text-slate-600 hover:text-slate-900"
+          >
+            <ChevronLeftIcon className="w-4 h-4 mr-1" />
+            Back to {categoryName}
+          </button>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-normal">
+              {product.status}
+            </Badge>
+            <Button variant="outline" size="sm" className="gap-2">
+              <PencilIcon className="w-4 h-4" />
+              Edit Details
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-12 gap-6">
           {/* Left Column - Image */}
-          <div className="col-span-3 p-6">
-            <button
-              onClick={onBack}
-              className="flex items-center text-sm text-slate-600 hover:text-slate-900 mb-4"
-            >
-              <ChevronLeftIcon className="w-4 h-4 mr-1" />
-              Back to {categoryName}
-            </button>
-            <div className="aspect-square bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <ProductImagePlaceholder productName={product.name} size="lg" />
-              )}
-            </div>
+          <div className="col-span-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="aspect-square bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
+                  {product.imageUrl ? (
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <ProductImagePlaceholder
+                      productName={product.name}
+                      size="lg"
+                    />
+                  )}
+                </div>
+                <div className="mt-4">
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    {product.name}
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">{product.id}</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Middle Column - Info & Components */}
-          <div className="col-span-6 p-6 overflow-y-auto">
+          <div className="col-span-5">
             <div className="space-y-6">
-              {/* Product Details Section */}
-              <div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                  Product Details
-                </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                      Status
-                    </h4>
-                    <p className="text-slate-700 mt-0.5">{product.status}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                      Margin
-                    </h4>
-                    <p className="text-slate-700 mt-0.5">
-                      {(product.margin * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                      Cost Price
-                    </h4>
-                    <p className="text-slate-700 mt-0.5">
-                      ${product.costPrice.toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                      Selling Price
-                    </h4>
-                    <p className="text-slate-700 mt-0.5">
-                      ${product.sellingPrice.toFixed(2)}
-                    </p>
-                  </div>
-                  {(product.projectedSellIn ||
-                    product.projectedSellThrough) && (
-                    <>
-                      {product.projectedSellIn && (
-                        <div>
-                          <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                            Projected Sell-In
-                          </h4>
-                          <p className="text-slate-700 mt-0.5">
-                            {product.projectedSellIn.toLocaleString()} units
-                          </p>
+              {/* Product Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Product Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">
+                        Margin
+                      </h4>
+                      <p className="text-lg font-medium text-slate-900">
+                        {(product.margin * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">
+                        Cost Price
+                      </h4>
+                      <p className="text-lg font-medium text-slate-900">
+                        ${product.costPrice.toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">
+                        Selling Price
+                      </h4>
+                      <p className="text-lg font-medium text-slate-900">
+                        ${product.sellingPrice.toFixed(2)}
+                      </p>
+                    </div>
+                    {(product.projectedSellIn ||
+                      product.projectedSellThrough) && (
+                      <div>
+                        <h4 className="text-xs text-slate-500 uppercase font-semibold mb-1">
+                          Projections
+                        </h4>
+                        <div className="space-y-1">
+                          {product.projectedSellIn && (
+                            <p className="text-sm text-slate-700">
+                              Sell-In:{" "}
+                              {product.projectedSellIn.toLocaleString()} units
+                            </p>
+                          )}
+                          {product.projectedSellThrough && (
+                            <p className="text-sm text-slate-700">
+                              Sell-Through:{" "}
+                              {(product.projectedSellThrough * 100).toFixed(1)}%
+                            </p>
+                          )}
                         </div>
-                      )}
-                      {product.projectedSellThrough && (
-                        <div>
-                          <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                            Projected Sell-Through
-                          </h4>
-                          <p className="text-slate-700 mt-0.5">
-                            {(product.projectedSellThrough * 100).toFixed(1)}%
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Components Section */}
-              <div className="pt-6 border-t border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    Components
-                  </h3>
-                  <button className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-sky-100 text-sky-700 hover:bg-sky-200 rounded-lg transition-colors">
-                    <PencilIcon className="w-4 h-4" />
-                    <span>Edit Components</span>
-                  </button>
-                </div>
-                <div className="text-sm text-slate-500">
-                  Component management will be implemented in a future update.
-                </div>
-              </div>
-
-              {/* Notes Section - Placeholder */}
-              <div className="pt-6 border-t border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    Notes
-                  </h3>
-                  <button className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-sky-100 text-sky-700 hover:bg-sky-200 rounded-lg transition-colors">
-                    <PencilIcon className="w-4 h-4" />
-                    <span>Add Note</span>
-                  </button>
-                </div>
-                <div className="text-sm text-slate-500 italic">
-                  No notes added yet.
-                </div>
-              </div>
+              {/* Components */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Components</CardTitle>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <PencilIcon className="w-4 h-4" />
+                      Edit Components
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-slate-500">
+                    Component management will be implemented in a future update.
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
-          {/* Right Column - Tags */}
-          <div className="col-span-3 p-6">
-            <div className="sticky top-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                  <TagIcon className="w-5 h-5 mr-2" />
-                  Product Tags
-                </h3>
-                <button
-                  onClick={() => setIsTagSelectorOpen(true)}
-                  className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-sky-100 text-sky-700 hover:bg-sky-200 rounded-lg transition-colors"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  <span>Add</span>
-                </button>
-              </div>
-
-              {/* Current Tags */}
-              <div className="space-y-3">
-                {currentTags.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    {currentTags.map((tag) => (
-                      <div key={tag.id} className="relative group">
-                        <TagChip tag={tag} size="sm" />
-                        <button
-                          onClick={() => removeTag(tag.id)}
-                          className="absolute -right-1 top-1/2 -translate-y-1/2 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100"
-                          title="Remove tag"
-                        >
-                          <XMarkIcon className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    ))}
+          {/* Right Column - Tags & Notes */}
+          <div className="col-span-3">
+            <div className="space-y-6">
+              {/* Tags */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Tags</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {Object.entries(availableTagsByCategory).map(
+                      ([category, tags]) => (
+                        <div key={category}>
+                          <h4 className="text-xs text-slate-500 uppercase font-semibold mb-2">
+                            {category}
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {tags.map((tag) => (
+                              <button
+                                key={tag.id}
+                                onClick={() => {
+                                  if (
+                                    currentTags.some((t) => t.id === tag.id)
+                                  ) {
+                                    removeTag(tag.id);
+                                  } else {
+                                    addTag(tag.id);
+                                  }
+                                }}
+                                className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                                  currentTags.some((t) => t.id === tag.id)
+                                    ? "bg-sky-100 text-sky-700 hover:bg-sky-200"
+                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                }`}
+                              >
+                                {tag.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-500 italic">
-                    No tags assigned
-                  </p>
-                )}
-              </div>
+                </CardContent>
+              </Card>
+
+              {/* Notes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-slate-500">
+                    Notes functionality will be implemented in a future update.
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Tag Selector Modal */}
-      {isTagSelectorOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Add Product Tags
-              </h3>
-              <button
-                onClick={() => setIsTagSelectorOpen(false)}
-                className="text-slate-500 hover:text-slate-700"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {/* Category Filter */}
-              <div className="flex space-x-2 mb-6">
-                <button
-                  onClick={() => setSelectedTagCategory(null)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    selectedTagCategory === null
-                      ? "bg-sky-100 text-sky-700 border border-sky-200"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  All Categories
-                </button>
-                {Object.keys(availableTagsByCategory).map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedTagCategory(category)}
-                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors capitalize ${
-                      selectedTagCategory === category
-                        ? "bg-sky-100 text-sky-700 border border-sky-200"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-
-              {/* Available Tags */}
-              <div className="space-y-4">
-                {Object.entries(availableTagsByCategory).map(
-                  ([category, tags]) => {
-                    if (selectedTagCategory && selectedTagCategory !== category)
-                      return null;
-                    if (tags.length === 0) return null;
-
-                    return (
-                      <div key={category}>
-                        <h4 className="text-sm font-medium text-slate-700 mb-2 capitalize">
-                          {category} Tags
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {tags.map((tag) => (
-                            <button
-                              key={tag.id}
-                              onClick={() => {
-                                addTag(tag.id);
-                                setIsTagSelectorOpen(false);
-                              }}
-                              className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors hover:shadow-sm bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
-                            >
-                              <PlusIcon className="w-3 h-3" />
-                              <span>{tag.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

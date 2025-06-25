@@ -24,6 +24,24 @@ interface ProgramWideViewProps {
   targetOverallMargin: number;
   onStatusChange: (category: LinePlanCategory, status: PLMStatusStage) => void;
   onBackToCategories: () => void;
+  selectedMetricForHighlighting?:
+    | "revenue"
+    | "margin"
+    | "sell-in"
+    | "sell-through"
+    | null;
+  isPoorPerformer?: (
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => boolean;
+  getHighlightReason?: (
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => string;
+  getPerformanceStatus?: (
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => "excellent" | "good" | "near" | "poor" | null;
 }
 
 export function ProgramWideView({
@@ -32,6 +50,8 @@ export function ProgramWideView({
   onSelectCategory,
   onSelectStyle,
   onStatusChange,
+  selectedMetricForHighlighting,
+  isPoorPerformer,
 }: ProgramWideViewProps) {
   // State for filtering
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -170,6 +190,12 @@ export function ProgramWideView({
       category.plannedStyles.reduce((sum, style) => sum + style.margin, 0) /
       (category.plannedStyles.length || 1);
 
+    // Check if this category should be highlighted as a poor performer
+    const shouldHighlight =
+      selectedMetricForHighlighting && isPoorPerformer
+        ? isPoorPerformer(category, selectedMetricForHighlighting)
+        : false;
+
     return (
       <Draggable key={category.id} draggableId={category.id} index={index}>
         {(provided) => (
@@ -177,7 +203,11 @@ export function ProgramWideView({
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer mb-3"
+            className={`bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer mb-3 ${
+              shouldHighlight
+                ? "border-red-300 bg-red-50/80 ring-1 ring-red-200"
+                : "border-slate-200"
+            }`}
             onClick={() => onSelectCategory(category)}
           >
             <div className="flex items-start justify-between mb-3">

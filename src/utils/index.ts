@@ -7,5 +7,5 @@ export function cn(...inputs: ClassValue[]) {
 
 export * from "./formatters";
 export * from "./layout";
-export * from "./localStorage";
+export * from "./sessionStorage";
 export * from "./statusSystem";

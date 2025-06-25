@@ -1,6 +1,9 @@
 import React from "react";
 import { BulletGraph } from "./BulletGraph";
 import { cn } from "@/utils";
+import { LinePlanCategory, PlannedStyle } from "@/types";
+
+import { getMetricStatus, getMetricColor } from "@/utils/metricCalculations";
 
 interface MetricBulletCardProps {
   title: string;
@@ -12,31 +15,12 @@ interface MetricBulletCardProps {
   onClick?: () => void;
   isActive?: boolean;
   showDelta?: boolean;
+  relatedCategories?: LinePlanCategory[];
+  relatedProducts?: PlannedStyle[];
+  onCategorySelect?: (category: LinePlanCategory) => void;
+  onProductSelect?: (product: PlannedStyle) => void;
+  isProjectLevel?: boolean;
 }
-
-// Helper to pick color based on metric type or status
-const getBarColor = (title: string, status: "over" | "near" | "under") => {
-  if (
-    title.toLowerCase().includes("revenue") ||
-    title.toLowerCase().includes("margin")
-  ) {
-    return status === "under" ? "bg-amber-500" : "bg-green-500";
-  }
-  if (title.toLowerCase().includes("sell-in")) {
-    return status === "under" ? "bg-amber-500" : "bg-blue-500";
-  }
-  if (title.toLowerCase().includes("sell-through")) {
-    return status === "under" ? "bg-amber-500" : "bg-green-500";
-  }
-  return status === "under" ? "bg-amber-500" : "bg-blue-500";
-};
-
-const getValueColor = (status: "over" | "near" | "under") => {
-  if (status === "over") return "text-green-600";
-  if (status === "near") return "text-gray-900";
-  if (status === "under") return "text-amber-600";
-  return "text-gray-900";
-};
 
 export const MetricBulletCard: React.FC<MetricBulletCardProps> = ({
   title,
@@ -50,18 +34,24 @@ export const MetricBulletCard: React.FC<MetricBulletCardProps> = ({
   showDelta = true,
 }) => {
   // Calculate progress and status
-  const progress = target === 0 ? 0 : (current / target) * 100;
+
   const deltaPercent = target === 0 ? 0 : ((current - target) / target) * 100;
 
-  // Determine status
-  let status: "over" | "near" | "under";
-  if (progress >= 105) {
-    status = "over";
-  } else if (progress >= 95) {
-    status = "near";
-  } else {
-    status = "under";
-  }
+  // Determine metric type from title
+  const getMetricType = (
+    title: string
+  ): "revenue" | "margin" | "sell-in" | "sell-through" => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes("revenue")) return "revenue";
+    if (lowerTitle.includes("margin")) return "margin";
+    if (lowerTitle.includes("sell-in")) return "sell-in";
+    if (lowerTitle.includes("sell-through")) return "sell-through";
+    return "revenue"; // default
+  };
+
+  const metricType = getMetricType(title);
+  const status = getMetricStatus(current, target);
+  const colors = getMetricColor(metricType, status);
 
   // Format display value
   const formatValue = (value: number) => {
@@ -78,27 +68,23 @@ export const MetricBulletCard: React.FC<MetricBulletCardProps> = ({
     }
   };
 
-  // Get colors based on status
-  const barColor = getBarColor(title, status);
-  const valueColor = getValueColor(status);
-
   return (
     <div
       className={cn(
-        "bg-white rounded-lg p-4 flex flex-col gap-2.5 relative transition-colors duration-200  border-black",
+        "bg-white rounded-lg p-4 flex flex-col gap-0 relative transition-colors duration-200 border border-gray-200",
         isActive && "ring-2 ring-primary",
         className
       )}
       onClick={onClick}
     >
       {/* Title row with icon */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {icon && <div className="text-gray-500">{icon}</div>}
           <span className="text-sm font-medium text-gray-900">{title}</span>
         </div>
         {showDelta && (
-          <div className={`text-xs font-medium ${valueColor}`}>
+          <div className={`text-xs font-medium ${colors.text}`}>
             {deltaPercent >= 0 ? "+" : ""}
             {deltaPercent.toFixed(1)}%
           </div>
@@ -108,7 +94,7 @@ export const MetricBulletCard: React.FC<MetricBulletCardProps> = ({
       {/* Values */}
       <div className="flex items-baseline justify-between">
         <div className="flex items-baseline gap-2">
-          <span className={`text-lg font-semibold ${valueColor}`}>
+          <span className={`text-lg font-semibold ${colors.text}`}>
             {formatValue(current)}
           </span>
           <span className="text-xs text-gray-500 font-medium">
@@ -121,7 +107,7 @@ export const MetricBulletCard: React.FC<MetricBulletCardProps> = ({
       <BulletGraph
         current={current}
         target={target}
-        barColor={barColor}
+        barColor={colors.bar}
         className="mt-1"
       />
     </div>

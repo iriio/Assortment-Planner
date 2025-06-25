@@ -26,29 +26,27 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import ProgramOverviewPage from "./pages/ProgramOverviewPage";
 import CategoryDetailPage from "./pages/CategoryDetailPage";
-import { initialLinePlan } from "./data/index";
+
 import {
-  PLMStatusStage,
   LinePlan,
-  LinePlanCategory,
-  PlannedStyle,
-  ProjectCreationInput,
   GlobalMetricViewOption,
   CategoryMetricViewOption,
   StyleMetricViewOption,
+  PLMStatusStage,
+  PlannedStyle,
+  LinePlanCategory,
+  ProjectCreationInput,
 } from "@/types/index";
 import {
   saveLinePlans,
-  loadLinePlans,
   saveCurrentLinePlanId,
-  loadCurrentLinePlanId,
   saveCategoryMetricView,
   saveStyleMetricView,
-  loadStyleMetricView,
   enableAutoSave,
   migrateData,
-} from "./utils/localStorage";
+} from "./utils/sessionStorage";
 import { generateId } from "./services/planningService";
+import { initialLinePlan, holidayLinePlan, resortLinePlan } from "./data";
 
 interface ProgramDetailsPayload {
   name: string;
@@ -99,35 +97,52 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+// Initialize line plans with all available programs
+const defaultLinePlans = [initialLinePlan, holidayLinePlan, resortLinePlan];
+
 const App: React.FC = () => {
-  // GLOBAL STATE: Line plans with localStorage initialization
+  // GLOBAL STATE: Initialize with default line plans, force refresh for demo
   const [linePlans, setLinePlans] = useState<LinePlan[]>(() => {
-    const savedPlans = loadLinePlans();
-    console.log("Loaded line plans:", savedPlans);
-    return savedPlans.length > 0 ? savedPlans : [initialLinePlan];
+    // Check if we need to force refresh the demo data
+    const currentDataVersion = sessionStorage.getItem("demo_data_version");
+    const DEMO_DATA_VERSION = "2.0"; // Increment this to force refresh
+
+    if (currentDataVersion !== DEMO_DATA_VERSION) {
+      console.log(
+        "🔄 Loading fresh demo data with updated performance scenarios"
+      );
+      sessionStorage.setItem("demo_data_version", DEMO_DATA_VERSION);
+      sessionStorage.removeItem("assortment_planner_line_plans"); // Clear old data
+      return defaultLinePlans;
+    }
+
+    // Try to load from storage, fall back to defaults
+    try {
+      const stored = sessionStorage.getItem("assortment_planner_line_plans");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to load stored data, using defaults");
+    }
+
+    return defaultLinePlans;
   });
 
   // CURRENT SELECTION: Active line plan with validation
-  const [currentLinePlanId, setCurrentLinePlanId] = useState<string>(() => {
-    const savedId = loadCurrentLinePlanId();
-    console.log("Loaded current line plan ID:", savedId);
-    // Validate that the saved ID exists in the line plans
-    const validId =
-      savedId && linePlans.some((lp) => lp.id === savedId)
-        ? savedId
-        : linePlans[0]?.id || initialLinePlan.id;
-    console.log("Using line plan ID:", validId);
-    return validId;
-  });
+  const [currentLinePlanId, setCurrentLinePlanId] = useState<string>(
+    defaultLinePlans[0]?.id || ""
+  );
 
-  // UI PREFERENCES: Metric display options with localStorage persistence
+  // UI PREFERENCES: Initialize with default values
   const [globalMetricView, setGlobalMetricView] =
     useState<GlobalMetricViewOption>("bullet");
   const [categoryMetricView, setCategoryMetricView] =
     useState<CategoryMetricViewOption>("current");
-  const [styleMetricView] = useState<StyleMetricViewOption>(() =>
-    loadStyleMetricView("current")
-  );
+  const [styleMetricView] = useState<StyleMetricViewOption>("current");
 
   // DERIVED STATE: Current active line plan
   const currentLinePlan =
@@ -302,6 +317,23 @@ const App: React.FC = () => {
   const handleAddCategory = useCallback(() => {
     // Implement category addition logic
     console.log("Adding new category");
+  }, []);
+
+  useEffect(() => {
+    // Remove legacy localStorage persisted data now that we rely solely on sessionStorage
+    try {
+      const legacyKeys = [
+        "assortment_planner_line_plans",
+        "assortment_planner_current_line_plan_id",
+        "assortment_planner_category_metric_view",
+        "assortment_planner_style_metric_view",
+        "assortment_planner_ui_preferences",
+        "compositionFilters",
+      ];
+      legacyKeys.forEach((k) => window.localStorage.removeItem(k));
+    } catch (err) {
+      // Ignore if localStorage is unavailable (e.g. privacy mode)
+    }
   }, []);
 
   return (

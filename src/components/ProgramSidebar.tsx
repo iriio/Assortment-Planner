@@ -38,7 +38,7 @@ export function ProgramSidebar({
     if (programs.length === 0) return null;
 
     return (
-      <div className="px-3 py-2">
+      <div key={`section-${title}`} className="px-3 py-2">
         <h2
           className={cn(
             "mb-2 px-4 text-xs font-semibold text-muted-foreground tracking-tight",
@@ -61,8 +61,11 @@ export function ProgramSidebar({
               onClick={() => onProgramSelect(program.id)}
               title={isCollapsed ? program.name : undefined}
             >
-              <Folder className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-              {!isCollapsed && <span>{program.name}</span>}
+              <Folder
+                key="folder-icon"
+                className={cn("h-4 w-4", !isCollapsed && "mr-2")}
+              />
+              {!isCollapsed && <span key="program-name">{program.name}</span>}
             </Button>
           ))}
         </div>
@@ -103,15 +106,19 @@ export function ProgramSidebar({
           />
         </div>
       )}
-      <Separator />
+      <Separator key="top-separator" />
       <ScrollArea className="flex-1">
         {renderProgramSection("Current", current)}
-        {drafts.length > 0 && <Separator className="my-2" />}
+        {drafts.length > 0 && (
+          <Separator key="drafts-separator" className="my-2" />
+        )}
         {renderProgramSection("Drafts", drafts)}
-        {archived.length > 0 && <Separator className="my-2" />}
+        {archived.length > 0 && (
+          <Separator key="archived-separator" className="my-2" />
+        )}
         {renderProgramSection("Archived", archived)}
       </ScrollArea>
-      <Separator />
+      <Separator key="bottom-separator" />
       <div
         className={cn(
           "flex items-center",

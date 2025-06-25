@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   LinePlanCategory,
   CategoryMetricViewOption,
@@ -17,6 +17,12 @@ import StatusBadge from "../common/StatusBadge";
 import TagListDisplay from "../common/TagListDisplay";
 import ProductImagePlaceholder from "../common/ProductImagePlaceholder";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/utils";
 
 interface ProductLineCategoryCardProps {
@@ -28,6 +34,24 @@ interface ProductLineCategoryCardProps {
   displayMode: "grid" | "list" | "table";
   metricViewStyle: CategoryMetricViewOption;
   onStatusChange: (category: LinePlanCategory, status: PLMStatusStage) => void;
+  selectedMetricForHighlighting?:
+    | "revenue"
+    | "margin"
+    | "sell-in"
+    | "sell-through"
+    | null;
+  isPoorPerformer?: (
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => boolean;
+  getHighlightReason?: (
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => string;
+  getPerformanceStatus?: (
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => "excellent" | "good" | "near" | "poor" | null;
 }
 
 const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
@@ -39,6 +63,10 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
   displayMode,
   metricViewStyle,
   onStatusChange,
+  selectedMetricForHighlighting,
+
+  getHighlightReason,
+  getPerformanceStatus,
 }) => {
   const avgCategoryMargin =
     category.plannedStyles.length > 0
@@ -54,13 +82,38 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
     0
   );
 
-  const avgSellThrough =
-    category.plannedStyles.length > 0
-      ? category.plannedStyles.reduce(
-          (sum, style) => sum + (style.projectedSellThrough || 0),
-          0
-        ) / category.plannedStyles.length
+  // Calculate consistent sell-in (same logic as sidebar)
+  const totalProjectedSellIn = useMemo(() => {
+    if (category.plannedStyles.length === 0) return 0;
+
+    const volumePerStyle =
+      category.targetVolume / category.plannedStyles.length;
+    return category.plannedStyles.reduce(
+      (sum, style) => sum + (style.projectedSellIn || volumePerStyle),
+      0
+    );
+  }, [category.plannedStyles, category.targetVolume]);
+
+  // Calculate weighted sell-through (same logic as sidebar)
+  const avgSellThrough = useMemo(() => {
+    if (category.plannedStyles.length === 0) return 0;
+
+    let totalProjectedSellThroughUnits = 0;
+    let totalBaseUnits = 0;
+    const volumePerStyle =
+      category.targetVolume / category.plannedStyles.length;
+
+    category.plannedStyles.forEach((style) => {
+      const baseVolume = style.projectedSellIn || volumePerStyle;
+      totalBaseUnits += baseVolume;
+      totalProjectedSellThroughUnits +=
+        (style.projectedSellThrough ?? 0.8) * baseVolume;
+    });
+
+    return totalBaseUnits > 0
+      ? totalProjectedSellThroughUnits / totalBaseUnits
       : 0;
+  }, [category.plannedStyles, category.targetVolume]);
 
   let cardBorderClass = "border-slate-200";
   let statusColorName = "slate";
@@ -71,7 +124,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
     let status: {
       message: string;
       color: string;
-      icon: React.ReactElement;
+      icon: React.ReactElement | null;
     } | null = null;
 
     switch (activeTargetFilter) {
@@ -88,7 +141,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
           status = {
             message: "Near Target",
             color: "amber",
-            icon: <ArrowUpRightIcon className="w-3 h-3 mr-1 text-amber-600" />,
+            icon: null,
           };
         } else {
           status = {
@@ -113,7 +166,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
           status = {
             message: "Near Target",
             color: "amber",
-            icon: <ArrowUpRightIcon className="w-3 h-3 mr-1 text-amber-600" />,
+            icon: null,
           };
         } else {
           status = {
@@ -126,10 +179,6 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
         }
         break;
       case "sellin":
-        const totalProjectedSellIn = category.plannedStyles.reduce(
-          (sum, style) => sum + (style.projectedSellIn || 0),
-          0
-        );
         if (category.plannedStyles.length === 0) {
           status = {
             message: "Below Target",
@@ -142,7 +191,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
           status = {
             message: "Near Target",
             color: "amber",
-            icon: <ArrowUpRightIcon className="w-3 h-3 mr-1 text-amber-600" />,
+            icon: null,
           };
         } else {
           status = {
@@ -167,7 +216,7 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
           status = {
             message: "Near Target",
             color: "amber",
-            icon: <ArrowUpRightIcon className="w-3 h-3 mr-1 text-amber-600" />,
+            icon: null,
           };
         } else {
           status = {
@@ -195,24 +244,61 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
     targetOverallMargin * 100
   ).toFixed(1)}%`;
 
+  // Get performance status for highlighting
+  const performanceStatus =
+    selectedMetricForHighlighting && getPerformanceStatus
+      ? getPerformanceStatus(category, selectedMetricForHighlighting)
+      : null;
+
+  // Only highlight if we have a status and it's not null
+  const shouldHighlight =
+    performanceStatus !== null && performanceStatus !== undefined;
+
+  // Get the reason for highlighting if applicable
+  const highlightReason =
+    shouldHighlight && selectedMetricForHighlighting && getHighlightReason
+      ? getHighlightReason(category, selectedMetricForHighlighting)
+      : "";
+
+  // Multi-level highlight styling based on performance
+  const getHighlightStyle = () => {
+    if (!shouldHighlight || !performanceStatus) return "";
+
+    switch (performanceStatus) {
+      case "excellent":
+        return "!border !border-emerald-300 ";
+      case "good":
+        return "!border !border-green-500 ";
+      case "near":
+        return "!border-2 !border-yellow-300 ";
+      case "poor":
+        return "!border-2 !border-red-300 !bg-red-50/30";
+      default:
+        return "";
+    }
+  };
+
+  const highlightStyle = getHighlightStyle();
+
   const renderMetricValue = () => {
-    if (!activeTargetFilter) {
+    // Use selectedMetricForHighlighting if available, otherwise fall back to activeTargetFilter
+    const metricToShow = selectedMetricForHighlighting || activeTargetFilter;
+
+    if (!metricToShow) {
       return marginText;
     }
 
-    switch (activeTargetFilter) {
+    switch (metricToShow) {
       case "margin":
         return marginText;
       case "revenue":
         return `$${(totalRevenue / 1000).toFixed(1)}K`;
+      case "sell-in":
       case "sellin":
-        const totalProjectedSellIn = category.plannedStyles.reduce(
-          (sum, style) => sum + (style.projectedSellIn || 0),
-          0
-        );
         return `${(totalProjectedSellIn / 1000).toFixed(1)}K / ${(
           category.targetVolume / 1000
         ).toFixed(1)}K`;
+      case "sell-through":
       case "sellthrough":
         return `${(avgSellThrough * 100).toFixed(1)}%`;
       default:
@@ -221,12 +307,36 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
   };
 
   const renderMarginMetric = () => {
-    const marginColorClassText = `text-${statusColorName}-600`;
-    const barFillClass = `bg-${statusColorName}-500`;
+    // Use selectedMetricForHighlighting if available, otherwise fall back to activeTargetFilter
+    const metricToShow = selectedMetricForHighlighting || activeTargetFilter;
+
+    // Use performance status colors if we have highlighting, otherwise use the old logic
+    let colorClass = statusColorName;
+    if (performanceStatus) {
+      switch (performanceStatus) {
+        case "excellent":
+          colorClass = "emerald";
+          break;
+        case "good":
+          colorClass = "green";
+          break;
+        case "near":
+          colorClass = "orange";
+          break;
+        case "poor":
+          colorClass = "red";
+          break;
+        default:
+          colorClass = statusColorName;
+      }
+    }
+
+    const marginColorClassText = `text-${colorClass}-600`;
+    const barFillClass = `bg-${colorClass}-500`;
     let barWidth = "w-full";
     let statusIcon = null;
 
-    if (!activeTargetFilter || activeTargetFilter === "margin") {
+    if (!metricToShow || metricToShow === "margin") {
       if (avgCategoryMargin < targetOverallMargin * 0.85) {
         statusIcon = (
           <ExclamationTriangleIcon className="w-3.5 h-3.5 ml-1 text-red-500" />
@@ -244,34 +354,67 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
         barWidth = "w-full"; // High
       }
     } else {
-      statusIcon = status?.icon;
-      switch (activeTargetFilter) {
-        case "revenue":
-          barWidth =
-            totalRevenue < 100000
-              ? "w-1/3"
-              : totalRevenue < 200000
-              ? "w-2/3"
-              : "w-full";
-          break;
-        case "sellin":
-          const totalProjectedSellIn = category.plannedStyles.reduce(
-            (sum, style) => sum + (style.projectedSellIn || 0),
-            0
-          );
-          barWidth =
-            totalProjectedSellIn < category.targetVolume * 0.85
-              ? "w-1/3"
-              : "w-2/3";
-          break;
-        case "sellthrough":
-          barWidth =
-            avgSellThrough < 0.7
-              ? "w-1/3"
-              : avgSellThrough < 0.85
-              ? "w-2/3"
-              : "w-full";
-          break;
+      // Use performance status-based icons and bar width
+      if (performanceStatus) {
+        switch (performanceStatus) {
+          case "excellent":
+            statusIcon = (
+              <CheckBadgeIcon className="w-3.5 h-3.5 ml-1 text-emerald-500" />
+            );
+            barWidth = "w-full";
+            break;
+          case "good":
+            statusIcon = (
+              <CheckBadgeIcon className="w-3.5 h-3.5 ml-1 text-green-500" />
+            );
+            barWidth = "w-5/6";
+            break;
+          case "near":
+            statusIcon = (
+              <ArrowUpRightIcon className="w-3.5 h-3.5 ml-1 text-orange-500" />
+            );
+            barWidth = "w-2/3";
+            break;
+          case "poor":
+            statusIcon = (
+              <ExclamationTriangleIcon className="w-3.5 h-3.5 ml-1 text-red-500" />
+            );
+            barWidth = "w-1/3";
+            break;
+        }
+      } else {
+        // Fallback to old logic
+        statusIcon = status?.icon;
+        switch (metricToShow) {
+          case "revenue":
+            barWidth =
+              totalRevenue < 100000
+                ? "w-1/3"
+                : totalRevenue < 200000
+                ? "w-2/3"
+                : "w-full";
+            break;
+          case "sell-in":
+          case "sellin":
+            const totalProjectedSellIn = category.plannedStyles.reduce(
+              (sum, style) => sum + (style.projectedSellIn || 0),
+              0
+            );
+            barWidth =
+              totalProjectedSellIn < category.targetVolume * 0.85
+                ? "w-1/3"
+                : "w-2/3";
+            break;
+          case "sell-through":
+          case "sellthrough":
+            barWidth =
+              avgSellThrough < 0.7
+                ? "w-1/3"
+                : avgSellThrough < 0.85
+                ? "w-2/3"
+                : "w-full";
+            break;
+        }
       }
     }
 
@@ -338,50 +481,38 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
     const hasMoreStyles = styles.length > 3;
     const remainingStylesCount = styles.length - 3;
 
-    return (
+    const cardContent = (
       <Card
         className={cn(
-          "group hover:shadow-md transition-all",
-          status && status.color !== "green" ? cardBorderClass : ""
+          "group hover:shadow-sm transition-all bg-white overflow-hidden rounded-md ",
+          status && status.color !== "green" ? cardBorderClass : "",
+          highlightStyle
         )}
       >
         <div
           className="flex flex-col h-full cursor-pointer "
           onClick={handleCardClick}
         >
-          {/* Header */}
-          <CardHeader className="flex-row items-start justify-between p-4 pb-0">
-            <div className="flex-1 flex items-center gap-2">
-              <h3 className="text-lg font-semibold text-gray-800">
-                {category.name}
-              </h3>
-              <p className="text-sm text-gray-500">{styles.length} styles</p>
-            </div>
-            <StatusBadge
-              status={categoryStatus}
-              onStatusChange={handleStatusChange}
-              interactive
-            />
-          </CardHeader>
-
           {/* Image Grid */}
-          <CardContent className="flex-1 px-4 py-2">
+          <CardContent className="flex-1 p-0">
             {styles.length > 0 ? (
-              <div className="grid grid-cols-3 grid-rows-2 gap-2 aspect-[4/3]">
+              <div className="grid grid-cols-3 grid-rows-2 gap-0.5 aspect-[4/3] relative">
                 {/* Hero Image */}
-                <div className="col-span-2 row-span-2 relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+                <div className=" col-span-2 row-span-2 relative w-full h-full bg-gray-100 overflow-hidden">
                   <ProductImagePlaceholder
                     productName={heroStyle.name}
                     imageUrl={heroStyle.imageUrl}
+                    className="object-top"
                   />
                 </div>
 
                 {/* Secondary Image 1 */}
-                <div className="col-span-1 row-span-1 relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+                <div className="col-span-1 row-span-1 relative w-full h-full bg-gray-100 overflow-hidden">
                   {secondaryStyle1 ? (
                     <ProductImagePlaceholder
                       productName={secondaryStyle1.name}
                       imageUrl={secondaryStyle1.imageUrl}
+                      className="object-top"
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-50 border rounded-lg"></div>
@@ -389,16 +520,17 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
                 </div>
 
                 {/* Secondary Image 2 */}
-                <div className="col-span-1 row-span-1 relative w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+                <div className="col-span-1 row-span-1 relative w-full h-full bg-gray-100 overflow-hidden">
                   {secondaryStyle2 ? (
                     <>
                       <ProductImagePlaceholder
                         productName={secondaryStyle2.name}
                         imageUrl={secondaryStyle2.imageUrl}
+                        className="object-top"
                       />
                       {hasMoreStyles && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <span className="text-white text-lg font-bold">
+                        <div className="absolute inset-0 bg-slate-500/50 flex items-center justify-center">
+                          <span className="text-white text-lg font-semibold">
                             +{remainingStylesCount}
                           </span>
                         </div>
@@ -408,10 +540,15 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
                     <div className="w-full h-full bg-gray-50 border rounded-lg"></div>
                   )}
                 </div>
+
+                {/* Fade overlay covering all images */}
+                {/* <div className="pointer-events-none absolute inset-0">
+                  <div className="absolute bottom-0 left-0 w-full h-1/5 bg-gradient-to-t from-slate-100 via-slate-100/30 via-50% to-transparent"></div>
+                </div> */}
               </div>
             ) : (
               <div
-                className="flex flex-col items-center justify-center w-full h-full aspect-[4/3] bg-gray-50 border-2 border-dashed rounded-lg text-gray-400 hover:bg-gray-100/50"
+                className="flex flex-col items-center justify-center w-full h-full aspect-[4/3] bg-gray-50  rounded-lg text-gray-400 hover:bg-gray-100/50"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddNewStyle(category);
@@ -422,69 +559,115 @@ const ProductLineCategoryCard: React.FC<ProductLineCategoryCardProps> = ({
               </div>
             )}
           </CardContent>
+          {/* Header */}
+          <CardHeader className="flex-row items-center justify-between p-4 pb-0 min-h-fit">
+            <div className="flex-1 flex items-center gap-2 ">
+              <h3 className="text-sm font-semibold text-gray-800 truncate">
+                {category.name}
+              </h3>
+              <p className="text-sm text-gray-500">{styles.length} styles</p>
+            </div>
+          </CardHeader>
 
           {/* Footer Metrics */}
-          <CardContent className="p-4 pt-0 pb-3">
+          <CardContent className="p-4 pt-0 pb-3 flex items-center justify-between">
             {renderMarginMetric()}
-            <div className="mt-2">
-              <TagListDisplay
-                tagIds={styles.flatMap((s) => s.tags || []).slice(0, 3) || []}
-              />
-            </div>
+            <StatusBadge
+              status={categoryStatus}
+              onStatusChange={handleStatusChange}
+              interactive
+              size="sm"
+              className=" items-center"
+            />
           </CardContent>
         </div>
       </Card>
     );
+
+    // Wrap with tooltip if highlighting
+    if (shouldHighlight && highlightReason) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
+            <TooltipContent>
+              <p className="text-sm">⚠️ {highlightReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return cardContent;
   };
 
-  const renderListDisplay = () => (
-    <Card
-      className={cn(
-        "group hover:shadow-md transition-all",
-        status && status.color !== "green" ? cardBorderClass : ""
-      )}
-    >
-      {/* Main container for the list item - handles click and layout */}
-      <div
-        className="p-4 flex items-center justify-between cursor-pointer"
-        onClick={handleCardClick}
+  const renderListDisplay = () => {
+    const cardContent = (
+      <Card
+        className={cn(
+          "group hover:shadow-md transition-all",
+          status && status.color !== "green" ? cardBorderClass : "",
+          highlightStyle
+        )}
       >
-        {/* Left section - contains status badge and category info */}
-        <div className="flex items-center gap-4">
-          <StatusBadge
-            status={categoryStatus}
-            onStatusChange={handleStatusChange}
-            interactive
-          />
-          {/* Category name and style count */}
-          <div>
-            <h3 className="font-semibold text-gray-800">{category.name}</h3>
-            <p className="text-sm text-gray-500">
-              {category.plannedStyles.length} styles
-            </p>
-          </div>
-        </div>
-
-        {/* Right section - contains metrics, tags, and actions */}
-        <div className="flex items-center gap-6">
-          {/* Metric display area */}
-          <div className="w-48">{renderMarginMetric()}</div>
-          {/* Tags display area */}
-          <div className="w-40">
-            <TagListDisplay
-              tagIds={
-                category.plannedStyles
-                  .flatMap((s) => s.tags || [])
-                  .slice(0, 3) || []
-              }
+        {/* Main container for the list item - handles click and layout */}
+        <div
+          className="p-4 flex items-center justify-between cursor-pointer"
+          onClick={handleCardClick}
+        >
+          {/* Left section - contains status badge and category info */}
+          <div className="flex items-center gap-4">
+            <StatusBadge
+              status={categoryStatus}
+              onStatusChange={handleStatusChange}
+              interactive
             />
+            {/* Category name and style count */}
+            <div>
+              <h3 className="font-semibold text-gray-800">{category.name}</h3>
+              <p className="text-sm text-gray-500">
+                {category.plannedStyles.length} styles
+              </p>
+            </div>
           </div>
-          {/* Action menu icon */}
-          <EllipsisVerticalIcon className="w-5 h-5 text-gray-400" />
+
+          {/* Right section - contains metrics, tags, and actions */}
+          <div className="flex items-center gap-6">
+            {/* Metric display area */}
+            <div className="w-48">{renderMarginMetric()}</div>
+            {/* Tags display area */}
+            <div className="w-40">
+              <TagListDisplay
+                tagIds={
+                  category.plannedStyles
+                    .flatMap((s) => s.tags || [])
+                    .slice(0, 3) || []
+                }
+              />
+            </div>
+            {/* Action menu icon */}
+            <EllipsisVerticalIcon className="w-5 h-5 text-gray-400" />
+          </div>
         </div>
-      </div>
-    </Card>
-  );
+      </Card>
+    );
+
+    // Wrap with tooltip if highlighting
+    if (shouldHighlight && highlightReason) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
+            <TooltipContent>
+              <p className="text-sm">⚠️ {highlightReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return cardContent;
+  };
 
   if (displayMode === "list") {
     return renderListDisplay();

@@ -47,98 +47,103 @@ const statusIconMap = {
   [PLMStatusStage.LAUNCHED]: <CheckBadgeIcon className="w-4 h-4" />,
 };
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({
-  status,
-  onStatusChange,
-  size = "md",
-  interactive = false,
-  iconOnly = false,
-  className = "",
-}) => {
-  const statusDef = getStatusDefinition(status);
-  const availableTransitions = getAvailableStatusTransitions(status);
-  const hasTransitions = availableTransitions.length > 0;
-  const statusIcon = statusIconMap[status];
+const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
+  (
+    {
+      status,
+      onStatusChange,
+      size = "md",
+      interactive = false,
+      iconOnly = false,
+      className = "",
+    },
+    ref
+  ) => {
+    const statusDef = getStatusDefinition(status);
+    const availableTransitions = getAvailableStatusTransitions(status);
+    const hasTransitions = availableTransitions.length > 0;
+    const statusIcon = statusIconMap[status];
 
-  // Size configurations
-  const sizeConfig = {
-    sm: "text-xs px-2 py-0.5",
-    md: "text-sm px-2.5 py-1",
-    lg: "text-base px-3 py-1.5",
-  };
+    // Size configurations
+    const sizeConfig = {
+      sm: "text-xs px-2 py-0.5",
+      md: "text-sm px-2.5 py-1",
+      lg: "text-base px-3 py-1.5",
+    };
 
-  const handleStatusSelect = (newStatus: PLMStatusStage) => {
-    if (canUserTransitionStatus(status, newStatus) && onStatusChange) {
-      onStatusChange(newStatus);
-    }
-  };
+    const handleStatusSelect = (newStatus: PLMStatusStage) => {
+      if (canUserTransitionStatus(status, newStatus) && onStatusChange) {
+        onStatusChange(newStatus);
+      }
+    };
 
-  if (interactive && hasTransitions && onStatusChange) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Badge
-            variant="outline"
-            className={cn(
-              "cursor-pointer hover:opacity-90 transition-all",
-              statusDef.colorClass,
-              statusDef.bgColorClass,
-              sizeConfig[size],
-              className
-            )}
-            title={`${statusDef.label} - ${statusDef.description}`}
-          >
-            <div className="flex items-center gap-1.5">
+    if (interactive && hasTransitions && onStatusChange) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Badge
+              ref={ref}
+              variant="outline"
+              className={cn(
+                "cursor-pointer hover:opacity-90 transition-all",
+                statusDef.colorClass,
+                statusDef.bgColorClass,
+                sizeConfig[size],
+                className
+              )}
+              title={`${statusDef.label} - ${statusDef.description}`}
+            >
               {statusIcon}
-              {!iconOnly && <span>{statusDef.label}</span>}
-            </div>
-          </Badge>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          {availableTransitions.map((targetStatus) => {
-            const targetDef = getStatusDefinition(targetStatus);
-            const targetIcon = statusIconMap[targetStatus];
-            return (
-              <DropdownMenuItem
-                key={targetStatus}
-                onClick={() => handleStatusSelect(targetStatus)}
-                className="cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  {targetIcon}
-                  <div>
-                    <div className="font-medium">{targetDef.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {targetDef.description}
+              {!iconOnly && <span className="ml-1.5">{statusDef.label}</span>}
+            </Badge>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {availableTransitions.map((targetStatus) => {
+              const targetDef = getStatusDefinition(targetStatus);
+              const targetIcon = statusIconMap[targetStatus];
+              return (
+                <DropdownMenuItem
+                  key={targetStatus}
+                  onClick={() => handleStatusSelect(targetStatus)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    {targetIcon}
+                    <div>
+                      <div className="font-medium">{targetDef.label}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {targetDef.description}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
+    // Non-interactive badge
+    return (
+      <Badge
+        ref={ref}
+        variant="outline"
+        className={cn(
+          statusDef.colorClass,
+          statusDef.bgColorClass,
+          sizeConfig[size],
+          className
+        )}
+        title={`${statusDef.label} - ${statusDef.description}`}
+      >
+        {statusIcon}
+        {!iconOnly && <span className="ml-1.5">{statusDef.label}</span>}
+      </Badge>
     );
   }
+);
 
-  // Non-interactive badge
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        statusDef.colorClass,
-        statusDef.bgColorClass,
-        sizeConfig[size],
-        className
-      )}
-      title={`${statusDef.label} - ${statusDef.description}`}
-    >
-      <div className="flex items-center gap-1.5">
-        {statusIcon}
-        {!iconOnly && <span>{statusDef.label}</span>}
-      </div>
-    </Badge>
-  );
-};
+StatusBadge.displayName = "StatusBadge";
 
 export default StatusBadge;

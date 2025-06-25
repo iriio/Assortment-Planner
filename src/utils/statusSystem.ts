@@ -27,7 +27,7 @@ const statusDefinitions: Record<PLMStatusStage, StatusDefinition> = {
     bgColorClass: "bg-purple-100",
   },
   [PLMStatusStage.READY_FOR_REVIEW]: {
-    label: "Ready for Review",
+    label: "Review",
     description: "Ready for review",
     colorClass: "text-yellow-700",
     bgColorClass: "bg-yellow-100",

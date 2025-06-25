@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CollectionIcon, PencilIcon } from "@/components/common/icons";
 import {
   LinePlanCategory,
   PlannedStyle,
   PLMStatusStage,
-  PlannedStyleStatus,
+  Product,
 } from "@/types";
 import { LayoutViewOption } from "@/types/layout";
 import StyleModal from "@/components/modals/StyleModal";
 import ComponentModal from "@/components/modals/ComponentModal";
 import ProductDetailView from "./ProductDetailView";
 import TagListDisplay from "@/components/common/TagListDisplay";
-import StatusBadge from "@/components/common/StatusBadge";
-import { calculateCategoryStatus } from "@/utils/statusSystem";
-import ProductImagePlaceholder from "@/components/common/ProductImagePlaceholder";
+
+import { Badge } from "@/components/ui/badge";
+
+import { CompactListView } from "@/components/views/CompactListView";
 
 interface CategoryDetailViewProps {
   category: LinePlanCategory;
@@ -24,6 +25,30 @@ interface CategoryDetailViewProps {
   selectedProductId?: string | null;
   onProductSelect?: (productId: string) => void;
   onProductBack?: () => void;
+  onStyleModalClose?: () => void;
+  isStyleModalOpen?: boolean;
+  // Product-level highlighting functions
+  selectedMetricForHighlighting?:
+    | "revenue"
+    | "margin"
+    | "sell-in"
+    | "sell-through"
+    | null;
+  isProductPoorPerformer?: (
+    product: PlannedStyle | Product,
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => boolean;
+  getProductHighlightReason?: (
+    product: PlannedStyle | Product,
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => string;
+  getProductPerformanceStatus?: (
+    product: PlannedStyle | Product,
+    category: LinePlanCategory,
+    metricType: "revenue" | "margin" | "sell-in" | "sell-through"
+  ) => "excellent" | "good" | "near" | "poor" | null;
 }
 
 export function CategoryDetailView({
@@ -33,21 +58,49 @@ export function CategoryDetailView({
   currentLayout,
   programName,
   selectedProductId,
-  onProductSelect,
-  onProductBack,
-}: CategoryDetailViewProps) {
-  const [selectedStyle, setSelectedStyle] = useState<PlannedStyle | null>(null);
-  const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
-  const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
 
-  const openStyleModal = (styleToEdit?: PlannedStyle) => {
-    setSelectedStyle(styleToEdit || null);
+  onProductBack,
+  onStyleModalClose,
+  isStyleModalOpen: externalIsStyleModalOpen,
+  selectedMetricForHighlighting,
+  isProductPoorPerformer,
+  getProductHighlightReason,
+  getProductPerformanceStatus,
+}: CategoryDetailViewProps) {
+  // All hooks must be at the top level, before any conditional logic
+  const [selectedStyle, setSelectedStyle] = useState<PlannedStyle | null>(null);
+  const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
+  const [internalIsStyleModalOpen, setInternalIsStyleModalOpen] =
+    useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const isStyleModalOpen = externalIsStyleModalOpen ?? internalIsStyleModalOpen;
+  const setIsStyleModalOpen =
+    externalIsStyleModalOpen !== undefined
+      ? (value: boolean) => {
+          if (onStyleModalClose && !value) onStyleModalClose();
+        }
+      : setInternalIsStyleModalOpen;
+
+  // Add debug logging for selectedProductId changes
+  useEffect(() => {
+    console.log(
+      "CategoryDetailView selectedProductId changed:",
+      selectedProductId
+    );
+  }, [selectedProductId]);
+
+  const openStyleModal = (style: PlannedStyle | null) => {
+    setSelectedStyle(style);
     setIsStyleModalOpen(true);
   };
 
   const closeStyleModal = () => {
-    setSelectedStyle(null);
     setIsStyleModalOpen(false);
+    setSelectedStyle(null);
+    if (onStyleModalClose) {
+      onStyleModalClose();
+    }
   };
 
   const openComponentModal = (styleToEdit: PlannedStyle) => {
@@ -69,23 +122,27 @@ export function CategoryDetailView({
   };
 
   const handleProductClick = (style: PlannedStyle) => {
-    if (onProductSelect) {
-      onProductSelect(style.id);
-    }
+    // Disabled for mockup - no product detail navigation
+    console.log("Product clicked (disabled for mockup):", style.id);
+    // if (onProductSelect) {
+    //   console.log("Calling onProductSelect with:", style.id);
+    //   onProductSelect(style.id);
+    // } else {
+    //   console.log("onProductSelect is not defined");
+    // }
   };
 
   const handleProductDetailBack = () => {
+    console.log("Product back clicked");
     if (onProductBack) {
       onProductBack();
     }
   };
 
   const handleFullProductUpdate = (updatedProduct: PlannedStyle) => {
+    console.log("Product update:", updatedProduct.id);
     onUpdateStyle(category.id, updatedProduct);
   };
-
-  const categoryPlmStatus =
-    category.plmStatus || calculateCategoryStatus(category);
 
   const handleStylePlmStatusChange = (
     styleId: string,
@@ -97,12 +154,18 @@ export function CategoryDetailView({
     }
   };
 
-  if (selectedProductId) {
+  // Render functions
+  const renderProductDetailView = () => {
+    if (!selectedProductId) return null;
+
     const productForDetailView = category.plannedStyles.find(
       (style) => style.id === selectedProductId
     );
-    if (productForDetailView) {
-      return (
+
+    if (!productForDetailView) return null;
+
+    return (
+      <div className="h-full">
         <ProductDetailView
           product={productForDetailView}
           onBack={handleProductDetailBack}
@@ -110,211 +173,127 @@ export function CategoryDetailView({
           categoryName={category.name}
           programName={programName}
         />
-      );
-    }
-  }
+      </div>
+    );
+  };
 
   const renderStandardView = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-6">
-      {category.plannedStyles.map((style: PlannedStyle) => {
-        const currentStylePlmStatus =
-          style.plmStatus || PLMStatusStage.BRIEFING;
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {category.plannedStyles.map((style) => (
+        <div
+          key={style.id}
+          onClick={() => handleProductClick(style)}
+          className="bg-white rounded-lg border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group"
+        >
+          <div className="aspect-square bg-slate-50 rounded-t-lg overflow-hidden border-b border-slate-200">
+            {style.imageUrl ? (
+              <img
+                src={style.imageUrl}
+                alt={style.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <CollectionIcon className="w-8 h-8 text-slate-400" />
+              </div>
+            )}
+          </div>
 
-        return (
-          <div
-            key={style.id}
-            className="bg-white rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow transition-all duration-200 cursor-pointer group flex flex-col"
-            onClick={() => handleProductClick(style)}
-          >
-            <div className="relative aspect-square">
-              {style.imageUrl ? (
-                <img
-                  src={style.imageUrl}
-                  alt={style.name}
-                  className="w-full h-full object-cover rounded-t-xl"
-                />
-              ) : (
-                <ProductImagePlaceholder
-                  productName={style.name}
-                  size="lg"
-                  className="rounded-t-xl"
-                />
-              )}
-              {/* Floating status badge */}
-              <div
-                className="absolute top-3 left-3"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <StatusBadge
-                  status={currentStylePlmStatus}
-                  onStatusChange={(newStatus) =>
-                    handleStylePlmStatusChange(style.id, newStatus)
-                  }
-                  interactive={true}
-                />
+          <div className="p-4 space-y-3">
+            <div>
+              <h3 className="text-sm font-medium text-slate-800 truncate group-hover:text-sky-600 transition-colors">
+                {style.name}
+              </h3>
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                <span>{style.id}</span>
+                {style.color && (
+                  <Badge variant="outline" className="font-normal">
+                    {style.color}
+                  </Badge>
+                )}
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
-              <div>
-                <h3
-                  className="text-sm font-semibold text-slate-800 truncate group-hover:text-sky-600 transition-colors"
-                  title={style.name}
-                >
-                  {style.name}
-                </h3>
-                <p className="text-xs text-slate-500 truncate mt-0.5">
-                  {style.color || "N/A"}
-                </p>
-              </div>
+            <div>
+              <TagListDisplay
+                tagIds={style.tags}
+                size="xs"
+                itemType="product"
+                maxVisibleTags={2}
+              />
+            </div>
 
-              <div>
-                <TagListDisplay
-                  tagIds={style.tags}
-                  size="xs"
-                  itemType="product"
-                  maxVisibleTags={2}
-                />
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <div className="text-xs">
+                <div className="text-sm font-medium text-slate-700">
+                  {(style.margin * 100).toFixed(1)}% MRG
+                </div>
+                <div className="text-slate-500">
+                  ${style.sellingPrice.toFixed(0)} RSP
+                </div>
               </div>
-
-              <div className="flex items-center justify-between pt-2 mt-auto border-t border-slate-100">
-                <div className="text-xs">
-                  <div className="text-sm font-medium text-slate-700">
-                    {(style.margin * 100).toFixed(1)}% MRG
-                  </div>
-                  <div className="text-slate-500">
-                    ${style.sellingPrice.toFixed(0)} RSP
-                  </div>
-                </div>
-                <div
-                  className="flex space-x-1"
-                  onClick={(e) => e.stopPropagation()}
+              <div
+                className="flex space-x-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openStyleModal(style);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors"
+                  title="Edit Style Details"
                 >
-                  <button
-                    onClick={() => openStyleModal(style)}
-                    className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors"
-                    title="Edit Style Details"
+                  <PencilIcon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openComponentModal(style);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-md transition-colors"
+                  title="Change Components"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-4 h-4"
                   >
-                    <PencilIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => openComponentModal(style)}
-                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-md transition-colors"
-                    title="Change Components"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-4 h-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"
-                      />
-                    </svg>
-                  </button>
-                </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 
   const renderCompactListView = () => (
-    <div className="divide-y divide-slate-100">
-      {category.plannedStyles.map((style: PlannedStyle) => {
-        const currentStylePlmStatus =
-          style.plmStatus || PLMStatusStage.BRIEFING;
-
-        return (
-          <div
-            key={style.id}
-            className="p-3 flex items-center space-x-3 hover:bg-slate-50 group transition-colors"
-          >
-            <div
-              className="flex-shrink-0 w-10 h-10 rounded-md bg-slate-100 overflow-hidden cursor-pointer"
-              onClick={() => handleProductClick(style)}
-            >
-              {style.imageUrl ? (
-                <img
-                  src={style.imageUrl}
-                  alt={style.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : style.status === PlannedStyleStatus.PLACEHOLDER ? (
-                <ProductImagePlaceholder
-                  productName={style.name}
-                  size="sm"
-                  className="rounded-md"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <CollectionIcon className="w-5 h-5 text-slate-400" />
-                </div>
-              )}
-            </div>
-            <div
-              className="flex-1 min-w-0 cursor-pointer"
-              onClick={() => handleProductClick(style)}
-            >
-              <p
-                className="text-sm font-medium text-slate-800 truncate group-hover:text-sky-600"
-                title={style.name}
-              >
-                {style.name}
-              </p>
-              <p
-                className="text-xs text-slate-500 truncate"
-                title={style.color}
-              >
-                {style.color || "N/A"}
-              </p>
-            </div>
-            <div
-              className="flex-shrink-0 mx-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <StatusBadge
-                status={currentStylePlmStatus}
-                onStatusChange={(newStatus) =>
-                  handleStylePlmStatusChange(style.id, newStatus)
-                }
-                interactive={true}
-              />
-            </div>
-            <div
-              className="flex-shrink-0 w-24 text-right cursor-pointer"
-              onClick={() => handleProductClick(style)}
-            >
-              <p className="text-sm font-medium text-slate-700">
-                {(style.margin * 100).toFixed(1)}%
-              </p>
-              <p className="text-xs text-slate-500">
-                ${style.sellingPrice.toFixed(0)}
-              </p>
-            </div>
-            <div
-              className="flex-shrink-0 flex items-center space-x-1 ml-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => openStyleModal(style)}
-                className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors"
-                title="Edit Style Details"
-              >
-                <PencilIcon className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <CompactListView
+      categories={[category]}
+      selectedCategoryId={category.id}
+      onSelectCategory={() => {}}
+      onSelectStyle={() => {}}
+      activeTargetFilter={null}
+      targetOverallMargin={0}
+      onStatusChange={(cat, status) =>
+        handleStylePlmStatusChange(cat.id, status)
+      }
+      onBackToCategories={() => {}}
+      selectedMetricForHighlighting={selectedMetricForHighlighting}
+      isProductPoorPerformer={isProductPoorPerformer}
+      getProductHighlightReason={getProductHighlightReason}
+      getProductPerformanceStatus={getProductPerformanceStatus}
+    />
   );
 
   const renderWideView = () => {
@@ -344,27 +323,21 @@ export function CategoryDetailView({
       <div className="h-full overflow-x-auto">
         <div className="flex gap-4 p-4 min-w-max">
           {statusOrder.map((status) => (
-            <div
-              key={status}
-              className="flex-shrink-0 w-80 bg-slate-50 rounded-lg border border-slate-200"
-            >
-              <div className="p-3 border-b border-slate-200 bg-white rounded-t-lg">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-slate-800">
-                    {status.charAt(0) +
-                      status.slice(1).toLowerCase().replace(/_/g, " ")}
-                  </h3>
-                  <span className="text-sm text-slate-500">
-                    {stylesByStatus[status]?.length || 0}
-                  </span>
-                </div>
+            <div key={status} className="w-72 flex-shrink-0">
+              <div className="bg-slate-50 rounded-lg p-3 mb-2">
+                <h3 className="text-sm font-medium text-slate-700">
+                  {status.replace(/_/g, " ")}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {(stylesByStatus[status] || []).length} styles
+                </p>
               </div>
-              <div className="p-2 space-y-2 max-h-[calc(100vh-12rem)] overflow-y-auto">
+              <div className="space-y-2">
                 {(stylesByStatus[status] || []).map((style) => (
                   <div
                     key={style.id}
-                    className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleProductClick(style)}
+                    className="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow cursor-pointer group"
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-12 h-12 bg-slate-100 rounded overflow-hidden flex-shrink-0">
@@ -374,20 +347,14 @@ export function CategoryDetailView({
                             alt={style.name}
                             className="w-full h-full object-cover"
                           />
-                        ) : style.status === PlannedStyleStatus.PLACEHOLDER ? (
-                          <ProductImagePlaceholder
-                            productName={style.name}
-                            size="sm"
-                            className="rounded"
-                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <CollectionIcon className="w-4 h-4 text-slate-400" />
+                            <CollectionIcon className="w-6 h-6 text-slate-400" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-slate-800 text-sm truncate">
+                        <h4 className="font-medium text-slate-800 text-sm truncate group-hover:text-sky-600">
                           {style.name}
                         </h4>
                         <p className="text-xs text-slate-500 truncate">
@@ -424,101 +391,41 @@ export function CategoryDetailView({
     );
   };
 
-  let viewToRender;
-  switch (currentLayout) {
-    case "standard":
-      viewToRender = renderStandardView();
-      break;
-    case "compactList":
-      viewToRender = renderCompactListView();
-      break;
-    case "wideView":
-      viewToRender = renderWideView();
-      break;
-    default:
-      viewToRender = renderStandardView();
+  // Main render logic
+  const renderContent = () => {
+    switch (currentLayout) {
+      case "compactList":
+        return renderCompactListView();
+      case "wideView":
+        return renderWideView();
+      default:
+        return renderStandardView();
+    }
+  };
+
+  // If a product is selected, render the product detail view
+  if (selectedProductId) {
+    return renderProductDetailView();
   }
 
+  // Otherwise render the main content
   return (
-    <div className="h-full flex flex-col bg-slate-50">
-      <div className="p-4 md:p-5 border-b border-slate-200 bg-white sticky top-0 z-10 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
-          <h2
-            className="text-xl md:text-2xl font-bold text-slate-800 truncate mb-2 sm:mb-0"
-            title={category.name}
-          >
-            {category.name}
-          </h2>
-          <div onClick={(e) => e.stopPropagation()}>
-            <StatusBadge
-              status={categoryPlmStatus}
-              interactive={false}
-              size="md"
-            />
-          </div>
-        </div>
+    <div className="space-y-5">
+      {/* Main content */}
+      {renderContent()}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <div>
-            <h4 className="text-xs text-slate-500 uppercase font-semibold">
-              Target Volume
-            </h4>
-            <p className="text-slate-700 mt-0.5">
-              {category.targetVolume
-                ? `${category.targetVolume.toLocaleString()} units`
-                : "N/A"}
-            </p>
-          </div>
-          {category.targetMetrics && (
-            <>
-              <div>
-                <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                  Target Margin
-                </h4>
-                <p className="text-slate-700 mt-0.5">
-                  {category.targetMetrics.margin !== undefined
-                    ? `${(category.targetMetrics.margin * 100).toFixed(1)}%`
-                    : "N/A"}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                  Target Revenue
-                </h4>
-                <p className="text-slate-700 mt-0.5">
-                  {category.targetMetrics.revenue !== undefined
-                    ? `$${category.targetMetrics.revenue.toLocaleString()}`
-                    : "N/A"}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-xs text-slate-500 uppercase font-semibold">
-                  Target Sell-Through
-                </h4>
-                <p className="text-slate-700 mt-0.5">
-                  {category.targetMetrics.sellThrough !== undefined
-                    ? `${(category.targetMetrics.sellThrough * 100).toFixed(
-                        1
-                      )}%`
-                    : "N/A"}
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="flex-grow overflow-y-auto">{viewToRender}</div>
-
+      {/* Style Modal */}
       {isStyleModalOpen && (
         <StyleModal
           isOpen={isStyleModalOpen}
           onClose={closeStyleModal}
-          onSave={selectedStyle?.id ? handleStyleUpdate : handleStyleAdd}
           style={selectedStyle}
-          mode={selectedStyle?.id ? "edit" : "add"}
+          onSave={selectedStyle ? handleStyleUpdate : handleStyleAdd}
+          mode={selectedStyle ? "edit" : "add"}
         />
       )}
+
+      {/* Component Modal */}
       {selectedStyle && isComponentModalOpen && (
         <ComponentModal
           isOpen={isComponentModalOpen}

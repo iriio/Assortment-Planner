@@ -1,4 +1,8 @@
-export type LayoutViewOption = "standard" | "compactList" | "wideView";
+export type LayoutViewOption =
+  | "standard"
+  | "compactList"
+  | "wideView"
+  | "pivotTable";
 
 export interface LayoutConfig {
   containerClasses: string;

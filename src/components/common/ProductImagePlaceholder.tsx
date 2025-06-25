@@ -31,7 +31,7 @@ const ProductImagePlaceholder: React.FC<ProductImagePlaceholderProps> = ({
 
   return (
     <div
-      className={`w-full h-full flex flex-col items-center justify-center text-center p-4 border-2 border-dashed border-slate-200 bg-slate-50 ${className}`}
+      className={`w-full h-full flex flex-col items-center justify-center text-center p-4  border-slate-200 bg-slate-50 ${className}`}
     >
       <div className={`mb-${size === "sm" ? "1" : "3"}`}>
         <svg
