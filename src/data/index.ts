@@ -1671,7 +1671,7 @@ export const initialLinePlan: LinePlan = {
     },
     {
       id: generateId(),
-      name: "Outerwear",
+      name: "Premium",
       targetVolume: 1500,
       plmStatus: PLMStatusStage.PLANNING,
       targetMetrics: {
@@ -1720,7 +1720,7 @@ export const initialLinePlan: LinePlan = {
     },
     {
       id: generateId(),
-      name: "Tops",
+      name: "Essentials",
       targetVolume: 3000,
       plmStatus: PLMStatusStage.PLANNING,
       targetMetrics: {
@@ -1775,7 +1775,7 @@ export const initialLinePlan: LinePlan = {
     },
     {
       id: generateId(),
-      name: "Bottoms",
+      name: "Budget",
       targetVolume: 2500,
       plmStatus: PLMStatusStage.PLANNING,
       targetMetrics: {
