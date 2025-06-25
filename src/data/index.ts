@@ -1640,7 +1640,7 @@ export const initialLinePlan: LinePlan = {
         // POOR PERFORMER - Low sell-through, below targets
         {
           id: "placeholder-1",
-          name: "SS26 Knit Sweater Dress",
+          name: "SS26 Knit Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.BRIEFING,
           color: "Navy",
@@ -1655,7 +1655,7 @@ export const initialLinePlan: LinePlan = {
         // NEAR TARGET PERFORMER
         {
           id: "placeholder-2",
-          name: "SS26 Wool Blend Midi Dress",
+          name: "SS26 Wool Blend Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.BRIEFING,
           color: "Charcoal",
@@ -1689,7 +1689,7 @@ export const initialLinePlan: LinePlan = {
         // POOR PERFORMER - Low margins, poor sell-through, high cost
         {
           id: "placeholder-3",
-          name: "SS26 Wool Blend Coat",
+          name: "SS26 Wool Blend Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.DESIGNING,
           color: "Camel",
@@ -1704,7 +1704,7 @@ export const initialLinePlan: LinePlan = {
         // NEAR TARGET PERFORMER
         {
           id: "placeholder-4",
-          name: "SS26 Puffer Jacket",
+          name: "SS26 Cashmere Blend Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.FINALIZING,
           color: "Black",
@@ -1744,7 +1744,7 @@ export const initialLinePlan: LinePlan = {
         // EXCELLENT PERFORMER - Premium pricing, high margins
         {
           id: "placeholder-5",
-          name: "SS26 Cashmere Blend Sweater",
+          name: "SS26 Boxy Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.DESIGNING,
           color: "Cream",
@@ -1759,7 +1759,7 @@ export const initialLinePlan: LinePlan = {
         // POOR PERFORMER - Low revenue potential
         {
           id: "placeholder-6",
-          name: "SS26 Merino Turtleneck",
+          name: "SS26 Merino Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.FINALIZING,
           color: "Forest Green",
@@ -1799,7 +1799,7 @@ export const initialLinePlan: LinePlan = {
         // POOR PERFORMER - Low margins due to high costs
         {
           id: "placeholder-7",
-          name: "SS26 Wool Blend Trousers",
+          name: "SS26 Everyday Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.BRIEFING,
           color: "Black",
@@ -1814,7 +1814,7 @@ export const initialLinePlan: LinePlan = {
         // POOR PERFORMER - Very low revenue potential
         {
           id: "placeholder-8",
-          name: "SS26 Corduroy Wide-Leg Pants",
+          name: "SS26 Slim Tee",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.BRIEFING,
           color: "Rust",
@@ -1848,7 +1848,7 @@ export const initialLinePlan: LinePlan = {
         // GOOD PERFORMER - High-margin leather goods
         {
           id: "placeholder-9",
-          name: "SS26 Leather Tote Bag",
+          name: "SS26 Long Sleeve Print Shirt",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.BRIEFING,
           color: "Cognac",
@@ -1863,7 +1863,7 @@ export const initialLinePlan: LinePlan = {
         // NEAR TARGET - Decent margins but lower revenue
         {
           id: "placeholder-10",
-          name: "SS26 Wool Scarf",
+          name: "SS26 Long Sleeve Polo",
           status: PlannedStyleStatus.PLACEHOLDER,
           plmStatus: PLMStatusStage.BRIEFING,
           color: "Grey Check",
